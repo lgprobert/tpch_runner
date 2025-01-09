@@ -1,3 +1,5 @@
 fastapi
 uvicorn
 pyarrow
+psycopg2
+pymysql

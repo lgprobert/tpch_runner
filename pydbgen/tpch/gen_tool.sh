@@ -1,10 +1,10 @@
 #!/bin/bash
 # shellcheck disable=SC2034
 
-DSS_PATH='./data'
+DSS_PATH='data'
 DSS_CONFIG='.'
 DSS_DIST='dists.dss'
-DSS_QUERY='./templates'
+DSS_QUERY='templates'
 action=dbgen
 
 query_generator() {
@@ -32,4 +32,3 @@ do
             SCALE_FACTOR=$option
             ;;
         t)
-

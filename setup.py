@@ -1,29 +1,25 @@
 import io
 
-from setuptools import find_packages, setup
+from setuptools import find_packages, setup  # type: ignore
 
-version = "4.1.0"
+version = "1.0"
 
 with io.open("./README.md", encoding="utf-8") as f:
     readme = f.read()
 
 setup(
-    name="pyrdp",
+    name="pydbgen",
     version=version,
     license="MIT",
     url="",
     author="Robert Li",
     author_email="laigp@hotmail.com",
-    description="Pure Python RapidsDB Driver",
+    description="TPC-H Python data tool",
     long_description=readme,
-    packages=find_packages(exclude=["tests*", "pyrdp.tests*"]),
+    packages=find_packages(exclude=["tests*", "pydbgen.tests*"]),
     # packages=find_packages(),
-    entry_points={
-        "sqlalchemy.dialects": [
-            "rapidsdb.pyrdp = pyrdp.sa.pyrdp:RDPDialect_pyrdp",
-        ]
-    },
-    install_requires=["thrift==0.11.0"],
+    entry_points={},
+    install_requires=[],
     zip_safe=False,
     classifiers=[
         "Development Status :: 1",

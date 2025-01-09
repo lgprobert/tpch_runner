@@ -126,5 +126,6 @@ dmypy.json
 .pyre/
 *.new
 
-tpch/queries/*
+queries
 !tpch/queries/.gitkeep
+**/tpch/data

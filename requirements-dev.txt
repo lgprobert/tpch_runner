@@ -1,0 +1,7 @@
+fastapi
+uvicorn
+pyarrow
+pymysql
+types-PyMySQL
+psycopg2
+types-psycopg2
