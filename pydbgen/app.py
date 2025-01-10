@@ -5,7 +5,7 @@ from fastapi import FastAPI, HTTPException
 from fastapi.responses import StreamingResponse
 
 from . import config
-from .tpch.gen_tool import csv_to_json, generate_data, stream_csv_to_json
+from .tpch.injection import csv_to_json, generate_data, stream_csv_to_json
 
 app = FastAPI()
 

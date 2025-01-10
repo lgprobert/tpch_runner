@@ -2,8 +2,8 @@
 # shellcheck disable=SC2034
 
 DSS_PATH='data'
-DSS_CONFIG='.'
-DSS_DIST='dists.dss'
+DSS_CONFIG='tool'
+DSS_DIST='tool/dists.dss'
 DSS_QUERY='templates'
 action=dbgen
 

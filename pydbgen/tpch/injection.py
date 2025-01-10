@@ -16,7 +16,7 @@ LAG_INTERVAL = config.lag_interval or 0
 
 env_vars = {
     "DSS_PATH": "data",
-    "DSS_CONFIG": ".",
+    "DSS_CONFIG": "tool",
     "DSS_DIST": "dists.dss",
     "DSS_QUERY": "templates",
 }
@@ -34,7 +34,7 @@ table_map = {
 
 
 def data_gen_batch(table: str, sf: int):
-    command = f"./dbgen -T {table} -f -s {sf}"
+    command = f"./tool/dbgen -T {table} -f -s {sf}"
     cwd = Path(__file__).parent.as_posix()
     # print("full command:", command, "cwd:", cwd, type(cwd))
     result = subprocess.run(
