@@ -41,4 +41,4 @@ where
 	and n_name = ':3'
 order by
 	s_name;
-:n -1
+-- :n -1
