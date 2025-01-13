@@ -8,7 +8,7 @@ with io.open("./README.md", encoding="utf-8") as f:
     readme = f.read()
 
 setup(
-    name="pydbgen",
+    name="tpch_runner",
     version=version,
     license="MIT",
     url="",
@@ -16,7 +16,7 @@ setup(
     author_email="laigp@hotmail.com",
     description="TPC-H Python data tool",
     long_description=readme,
-    packages=find_packages(exclude=["tests*", "pydbgen.tests*"]),
+    packages=find_packages(exclude=["tests*", "tpch_runner.tests*"]),
     # packages=find_packages(),
     entry_points={},
     install_requires=[],

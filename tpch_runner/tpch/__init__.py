@@ -37,8 +37,8 @@ def timeit(func):
         start_time = time.time()
         results = func(*args, **kwargs)
         end_time = time.time()
-        runtime = round((end_time - start_time), 2)
-        print(f"{runtime:.2f} seconds.")
+        runtime = round((end_time - start_time), 4)
+        print(f"{runtime:.4f} seconds.")
         # return result, runtime
 
         if isinstance(results, tuple):
@@ -55,7 +55,7 @@ def post_process(func):
         func_name = func.__wrapped__.__name__
         if func_name == "run_query":
             _results = func(*args, **kwargs)
-            print(f"Processing result: {_results}")
+            # print(f"Processing result: {_results}")
             db_type, idx, rowcount, rset, columns, result_dir, runtime = _results
             df = pd.DataFrame(rset, columns=columns)
             current_timestamp = datetime.now().strftime("%Y-%m-%d-%H%M%S")

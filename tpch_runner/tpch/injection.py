@@ -8,7 +8,7 @@ import sys
 from pathlib import Path
 from typing import AsyncGenerator, Generator, Optional
 
-from pydbgen import config
+from tpch_runner import config
 
 RANDOM_LAG = config.random_lag or False
 MAX_LAG_TIME = config.max_lag_time or 1

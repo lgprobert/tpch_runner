@@ -9,6 +9,5 @@ err_exit() {
 }
 
 source "$venv_path"
-# cd ./pydbgen ||  err_exit "Directory .pydbgen not found"
 
-uvicorn pydbgen.app:app --host 0.0.0.0 --reload
+uvicorn tpch_runner.app:app --host 0.0.0.0 --reload

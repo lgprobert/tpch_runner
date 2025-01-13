@@ -3,7 +3,7 @@ from typing import Optional
 import numpy as np
 import pandas as pd
 
-from pydbgen.config import precision
+from tpch_runner.config import precision
 
 from .. import RESULT_DIR
 

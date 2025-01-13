@@ -14,7 +14,7 @@ MAX_LAG_TIME = config.max_lag_time or 1
 LAG_INTERVAL = config.lag_interval or 0
 
 # CSV_FILE_PATH = "/software/data/tpch/sf1"
-CSV_FILE_PATH = "pydbgen/tpch/data"
+CSV_FILE_PATH = "tpch_runner/tpch/data"
 TPCH_DIR = Path(__file__).parent.joinpath("tpch")
 
 table_fields = {
