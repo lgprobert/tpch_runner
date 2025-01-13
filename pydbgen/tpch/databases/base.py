@@ -1,12 +1,16 @@
+import sys
+from datetime import datetime
+from pathlib import Path
 from typing import Iterable, Optional
 
-from .. import all_tables
+from .. import RESULT_DIR, Result, all_tables, post_process, timeit
 
 POWER = "power"
 THROUGHPUT = "throughput"
 QUERY_METRIC = "query_stream_%s_query_%s"
 REFRESH_METRIC = "refresh_stream_%s_func_%s"
 THROUGHPUT_TOTAL_METRIC = "throughput_test_total"
+
 
 QUERY_ORDER = [  # follows appendix A of the TPCH-specification
     [14, 2, 9, 20, 6, 17, 18, 8, 21, 13, 3, 22, 16, 4, 11, 15, 1, 10, 19, 5, 7, 12],
@@ -106,31 +110,43 @@ class Connection:
         print("database has been closed")
         return None
 
-    def query_from_file(self, filepath) -> tuple[int, Optional[Iterable]]:
-        """Return number of rows affected by query or -1 if database is closed
-        or executing DDL statements.
+    def query_from_file(self, filepath) -> tuple[int, Optional[Iterable], Optional[list]]:
+        """Return number of rows affected by last query or -1 if database is
+        closed or executing DDL statements.
         """
         if self.__cursor__ is None:
             print("database has been closed")
-            return -1, None
+            return -1, None, None
 
-        rowcount: int
-        rset: Optional[Iterable]
+        rowcount = 0
+        rset = None
+        columns = None
         with open(filepath) as query_file:
-            query = query_file.read()
-            rowcount = self.__cursor__.execute(query)
-        rset = self.__cursor__.fetchall()  # if rowcount > 0 else None
-        return rowcount, rset
+            content = query_file.readlines()
+            content = [
+                line
+                for line in content
+                if line.strip() and not line.strip().startswith("--")
+            ]
+            sql_script = " ".join(content)
+            statements = sql_script.split(";")
+            statements = [stmt.strip() for stmt in statements if stmt.strip()]
 
-    def copyFrom(self, filepath, separator, table) -> int:
-        """Return number of rows successfully copied into the target table."""
-        if self.__cursor__ is None:
-            print("database has been closed")
-            return -1
+            try:
+                for stmt in statements:
+                    if stmt.lower().startswith("select"):
+                        self.__cursor__.execute(stmt)
+                        rowcount = self.__cursor__.rowcount
+                        rset = self.__cursor__.fetchall()
+                        columns = [desc[0] for desc in self.__cursor__.description]
+                    elif stmt.startswith("--"):
+                        pass
+                    else:
+                        self.__cursor__.execute(stmt)
 
-        with open(filepath, "r") as in_file:
-            self.__cursor__.copy_from(in_file, table=table, sep=separator)
-        return self.__cursor__.rowcount
+            except Exception as e:
+                raise RuntimeError("Statement {} fails, exception: {}".format(stmt, e))
+        return rowcount, rset, columns
 
     def commit(self) -> bool:
         if self.__connection__ is None:
@@ -139,16 +155,74 @@ class Connection:
         self.__connection__.commit()
         return True
 
-    def drop_all(self):
-        if self.__connection__ is None:
-            print("cursor not initialized")
-            return False
-
-        for tbl in all_tables:
-            self.query(f"drop table if exists {tbl}")
-
 
 class TPCH_Runner:
+    db_type = ""
+    query_dir = Path(__file__).parents[1].joinpath("queries")
+
+    def __init__(self, connection: Connection):
+        self._conn = connection
 
     def create_tables(self):
         pass
+
+    def load_single_table(self, table: str, line_terminator: Optional[str] = None):
+        pass
+
+    @timeit
+    def load_data(self, table: str = "all"):
+        if table != "all" and table not in all_tables:
+            raise ValueError(f"Invalid table name {table}.")
+        elif table != "all":
+            self.load_single_table(table)
+        else:
+            for tbl in all_tables:
+                print()
+                self.load_single_table(tbl)
+            print("\nAll tables finish loading.")
+
+    @timeit
+    def drop_all(self):
+        try:
+            with self._conn as conn:
+                for tbl in all_tables:
+                    conn.query(f"drop table if exists {tbl}")
+        except Exception as e:
+            print(f"Drop table fails, exception: {e}.", file=sys.stderr)
+            return
+        print("All tables are dropped.")
+
+    @post_process
+    @timeit
+    def run_query(self, query_index: int, result_dir: Optional[Path] = None) -> Result:
+        try:
+            with self._conn as conn:
+                rowcount, rset, columns = conn.query_from_file(
+                    f"{self.query_dir}/{query_index}.sql"
+                )
+                print(f"\nQ{query_index} succeeds, return {rowcount} rows.")
+            result = Result(
+                db=self.db_type,
+                idx=query_index,
+                rowcount=rowcount,
+                rset=rset,
+                columns=columns,
+                result_dir=result_dir,
+            )
+            return result
+        except Exception as e:
+            print(f"Query execution fails, exception: {e}", file=sys.stderr)
+        return Result(self.db_type, query_index, -1, None, None, result_dir)
+
+    @timeit
+    def power_test(self):
+        """Run TPC-H power test."""
+        results = {}
+        test_timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        result_dir = RESULT_DIR.joinpath(f"{self.db_type}_{test_timestamp}")
+        result_dir.mkdir(exist_ok=True)
+        for _query_idx in QUERY_ORDER[0]:
+            rowcount, rset, columns, runtime = self.run_query(_query_idx, result_dir)
+            results[_query_idx] = {"rows": rowcount, "result": rset, "time": runtime}
+        print("\nPowertest is finished.")
+        return results

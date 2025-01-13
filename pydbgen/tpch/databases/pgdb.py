@@ -4,7 +4,7 @@ from pathlib import Path
 import psycopg2
 
 from .. import DATA_DIR, all_tables, timeit
-from . import QUERY_DIR, base
+from . import base
 
 SHEMA_DIR = Path(__file__).parents[1].joinpath("schema/pg")
 
@@ -41,9 +41,12 @@ class PGDB(base.Connection):
         return -1
 
 
-class PG_TPCH:
-    def __init__(self, host, port, db_name, user, password, **kwargs):
-        self.conn = PGDB(host, port, db_name, user, password, **kwargs)
+class PG_TPCH(base.TPCH_Runner):
+    db_type = "pg"
+
+    def __init__(self, connection: PGDB):
+        super().__init__(connection)
+        self._conn = connection
 
     @timeit
     def create_tables(self):
@@ -51,7 +54,7 @@ class PG_TPCH:
 
         Note: this method requires an active DB connection.
         """
-        with self.conn as conn:
+        with self._conn as conn:
             print("Create tables")
             conn.query_from_file(f"{SHEMA_DIR}/table_schema.sql")
             print("Add primary keys")
@@ -63,7 +66,7 @@ class PG_TPCH:
     def load_single_table(self, table: str):
         """Load test data into TPC-H tables."""
         try:
-            with self.conn as conn:
+            with self._conn as conn:
                 conn.copyFrom(f"{DATA_DIR}/{table}.csv", ",", table)
                 conn.commit()
         except Exception as e:
@@ -82,21 +85,10 @@ class PG_TPCH:
 
     @timeit
     def after_load(self):
-        with self.conn as conn:
+        with self._conn as conn:
             print("Create indexes")
             conn.query_from_file(f"{SHEMA_DIR}/pg_index.sql")
             conn.commit()
 
             print("Analyze database")
             conn.query("analyze")
-
-    @timeit
-    def run_query(self, query_index: int):
-        try:
-            with self.conn as conn:
-                rowcount = conn.query_from_file(f"{QUERY_DIR}/{query_index}.sql")
-                # print(self.conn.fetch())
-                print(f"Q{query_index} succeeds, return {rowcount} rows.")
-                return self.conn.fetch()
-        except Exception as e:
-            print(f"Query execution fails, exception: {e}", file=sys.stderr)
