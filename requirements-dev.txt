@@ -5,3 +5,7 @@ pymysql
 types-PyMySQL
 psycopg2
 types-psycopg2
+pandas
+sqlalchemy
+pandas-stubs
+ipython

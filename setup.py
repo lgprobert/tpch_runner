@@ -18,7 +18,11 @@ setup(
     long_description=readme,
     packages=find_packages(exclude=["tests*", "tpch_runner.tests*"]),
     # packages=find_packages(),
-    entry_points={},
+    entry_points={
+        "console_scripts": [
+            "runner=tpch_runner.commands.base_commands:main",
+        ]
+    },
     install_requires=[],
     zip_safe=False,
     classifiers=[

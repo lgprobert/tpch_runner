@@ -128,4 +128,7 @@ dmypy.json
 
 queries
 !tpch/queries/.gitkeep
-**/tpch/data
+tpch/data/*
+!data/*.csv
+
+results.db
