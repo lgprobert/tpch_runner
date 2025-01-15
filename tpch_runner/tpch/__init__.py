@@ -8,7 +8,10 @@ from typing import Any
 
 import pandas as pd
 
-Result = namedtuple("Result", ["db", "idx", "rowcount", "rset", "columns", "result_dir"])
+Result = namedtuple(
+    "Result",
+    ["db", "idx", "success", "rowcount", "rset", "columns", "result_dir", "metadb"],
+)
 
 DATA_DIR = Path("~/data/tpch/small").expanduser()
 RESULT_DIR = Path("~/data/result").expanduser()
@@ -39,7 +42,6 @@ def timeit(func):
         end_time = time.time()
         runtime = round((end_time - start_time), 4)
         print(f"{runtime:.4f} seconds.")
-        # return result, runtime
 
         if isinstance(results, tuple):
             return (*results, runtime)
@@ -52,20 +54,49 @@ def timeit(func):
 def post_process(func):
     @wraps(func)
     def wrapper(*args, **kwargs) -> Any:
+        from .databases.meta import TestResultManager
+
+        metadb: TestResultManager
+        result_dir: Path
+
         func_name = func.__wrapped__.__name__
         if func_name == "run_query":
-            _results = func(*args, **kwargs)
-            # print(f"Processing result: {_results}")
-            db_type, idx, rowcount, rset, columns, result_dir, runtime = _results
-            df = pd.DataFrame(rset, columns=columns)
-            current_timestamp = datetime.now().strftime("%Y-%m-%d-%H%M%S")
-            csv_file_name = "{}_{}_{}.csv".format(db_type, f"q{idx}", current_timestamp)
+            # breakpoint()
+            _results, no_report, runtime = func(*args, **kwargs)
+            (
+                db_type,
+                idx,
+                success,
+                rowcount,
+                rset,
+                columns,
+                result_dir,
+                metadb,
+            ) = _results
 
-            if result_dir:
-                df.to_csv(result_dir.joinpath(csv_file_name), index=False)
-            else:
-                df.to_csv(RESULT_DIR.joinpath(csv_file_name), index=False)
-            return rowcount, rset, columns, runtime
+            if not no_report:
+                df = pd.DataFrame(rset, columns=columns)
+                current_timestamp = datetime.now().strftime("%Y-%m-%d-%H%M%S")
+                csv_file_name = "{}_{}_{}.csv".format(
+                    db_type, f"q{idx}", current_timestamp
+                )
+
+                if result_dir:
+                    csv_file_name = f"{idx}.csv"
+                    df.to_csv(Path(result_dir).joinpath(csv_file_name), index=False)
+                else:
+                    df.to_csv(RESULT_DIR.joinpath(csv_file_name), index=False)
+                result_folder = str(result_dir.stem) if result_dir else None
+                metadb.add_test_result(
+                    db_type=db_type,
+                    success=success,
+                    rowcount=rowcount,
+                    result_csv=csv_file_name,
+                    query_name=idx,
+                    runtime=runtime,
+                    powertest_folder=result_folder,
+                )
+            return success, rowcount, rset, columns, runtime
         return _results
 
     return wrapper

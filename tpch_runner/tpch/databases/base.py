@@ -4,6 +4,7 @@ from pathlib import Path
 from typing import Iterable, Optional
 
 from .. import RESULT_DIR, Result, all_tables, post_process, timeit
+from .meta import TestResultManager, setup_database
 
 POWER = "power"
 THROUGHPUT = "throughput"
@@ -162,6 +163,7 @@ class TPCH_Runner:
 
     def __init__(self, connection: Connection):
         self._conn = connection
+        self.meta = TestResultManager(setup_database())
 
     def create_tables(self):
         pass
@@ -194,7 +196,17 @@ class TPCH_Runner:
 
     @post_process
     @timeit
-    def run_query(self, query_index: int, result_dir: Optional[Path] = None) -> Result:
+    def run_query(
+        self, query_index: int, result_dir: Optional[Path] = None, no_report: bool = False
+    ) -> tuple[Result, bool]:
+        """Run a TPC-H query from query file.
+
+        Return: return processed by post_process and return to caller.
+            rowcount (int): number of records.
+            rset (tuple): resultset.
+            columns (list): column names in resultset.
+            runtime (float): query runtime.
+        """
         try:
             with self._conn as conn:
                 rowcount, rset, columns = conn.query_from_file(
@@ -204,25 +216,57 @@ class TPCH_Runner:
             result = Result(
                 db=self.db_type,
                 idx=query_index,
+                success=True,
                 rowcount=rowcount,
                 rset=rset,
                 columns=columns,
                 result_dir=result_dir,
+                metadb=self.meta,
             )
-            return result
+            return result, no_report
         except Exception as e:
             print(f"Query execution fails, exception: {e}", file=sys.stderr)
-        return Result(self.db_type, query_index, -1, None, None, result_dir)
+        return (
+            Result(self.db_type, query_index, False, -1, None, None, result_dir, None),
+            no_report,
+        )
 
-    @timeit
-    def power_test(self):
+    def power_test(self, no_report: bool = False):
         """Run TPC-H power test."""
         results = {}
-        test_timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        total_time = 0
+        success = True
+        test_time = datetime.now()
+        test_timestamp = test_time.strftime("%Y%m%d_%H%M%S")
         result_dir = RESULT_DIR.joinpath(f"{self.db_type}_{test_timestamp}")
-        result_dir.mkdir(exist_ok=True)
+
+        # breakpoint()
+
+        print(f"\nPower test start at {test_time.strftime('%Y-%m-%d %H:%M:%S')}")
+        if not no_report:
+            print("Test result will be saved in:", result_dir)
+            result_dir.mkdir(exist_ok=True)
+            self.meta.add_powertest(
+                testtime=test_time, result_folder=str(result_dir.stem)
+            )
+
         for _query_idx in QUERY_ORDER[0]:
-            rowcount, rset, columns, runtime = self.run_query(_query_idx, result_dir)
+            query_success, rowcount, rset, columns, runtime = self.run_query(
+                _query_idx, result_dir, no_report
+            )
             results[_query_idx] = {"rows": rowcount, "result": rset, "time": runtime}
-        print("\nPowertest is finished.")
+            total_time += runtime
+            if query_success is False:
+                success = False
+
+        if not no_report:
+            self.meta.update_powertest(
+                test_id=str(result_dir.stem), success=success, runtime=total_time
+            )
+
+        print(
+            "\nPowertest is finished, test result: {}, total time: {} secs.".format(
+                "Succeed" if success else "Fail", round(total_time, 6)
+            )
+        )
         return results
