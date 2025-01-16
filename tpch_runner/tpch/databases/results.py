@@ -1,3 +1,4 @@
+from pathlib import Path
 from typing import Optional
 
 import numpy as np
@@ -5,13 +6,26 @@ import pandas as pd
 
 from tpch_runner.config import precision
 
-from .. import RESULT_DIR
+from .. import ANSWER_DIR, RESULT_DIR
 
 
 class Result:
 
-    def __init__(self, db_type: Optional[str] = None, test_time: Optional[str] = None):
-        if test_time:
+    def __init__(
+        self,
+        scale: str,
+        db_type: Optional[str] = None,
+        test_time: Optional[str] = None,
+        result_dir: Optional[str] = None,
+    ):
+        self.result_dir: Path
+        self.answer_dir: Path = Path(ANSWER_DIR).joinpath(scale)
+        self.db_type = db_type
+        self.scale = scale
+
+        if result_dir:
+            self.result_dir = Path(RESULT_DIR).joinpath(result_dir)
+        elif test_time:
             test_folder = RESULT_DIR.joinpath(f"{db_type}_{test_time}")
             if not test_folder.is_dir():
                 raise ValueError(f"Result directory {str(test_folder)} not exists.")
@@ -19,27 +33,65 @@ class Result:
         else:
             self.result_dir = RESULT_DIR
 
-    def equals(self, file1: str, file2: str) -> bool:
-        file1_path = self.result_dir.joinpath(file1)
-        file2_path = self.result_dir.joinpath(file2)
-        if not file1_path.is_file() or not file2_path.is_file():
+    def compare_single_query(
+        self, csv_file: str, answer_file: Optional[str] = None
+    ) -> bool:
+        """Compare the result file with the answer file and return True if they are
+        identical.
+
+        Args:
+            csv_file: Name of the result file.
+            answer_file: Name of the answer file.
+        """
+        file1_path = Path(RESULT_DIR).joinpath(csv_file)
+        if answer_file:
+            answer_file_path = Path(answer_file)
+        else:
+
+            _, idx1, _ = file1_path.stem.split("_")
+            answer_file_path = (
+                Path(ANSWER_DIR).joinpath(self.scale).joinpath(f"{idx1[1:]}.csv")
+            )
+
+        if not file1_path.is_file() or not answer_file_path.is_file():
             raise FileNotFoundError(
                 "Result file may not exist in {}, files: {}, {}".format(
-                    self.result_dir, file1, file2
+                    self.result_dir, csv_file, answer_file
                 )
             )
 
-        db1, idx1, _ = file1_path.stem.split("_")
-        db2, idx2, _ = file2_path.stem.split("_")
-        if idx1 != idx2:
-            raise RuntimeError(
-                f"Queries are not matched, first is {idx1}, second is {idx2}."
+        return self._equals(file1_path, answer_file_path)
+
+    def compare_against_answer(self, file1: str) -> bool:
+        """Compare the result file with the answer file and return True if they are
+        identical.
+
+        Args:
+            file1: Name of the result file.
+        """
+        file1_path = self.result_dir.joinpath(file1)
+        answer_file = self.answer_dir.joinpath(file1)
+        if not file1_path.is_file() or not answer_file.is_file():
+            raise FileNotFoundError(
+                "Result file may not exist in {}, files: {}, {}".format(
+                    self.result_dir, file1, answer_file
+                )
             )
 
-        df_file1 = pd.read_csv(file1_path)
-        df_file2 = pd.read_csv(file2_path)
+        return self._equals(file1_path, answer_file)
+
+    def _equals(self, file1: Path, file2: Path) -> bool:
+        """Compare two result files and return True if they are identical.
+
+        Args:
+            file1: Name of the first result file.
+            file2: Name of the answer file.
+        """
+        df_file1 = pd.read_csv(file1)
+        df_file2 = pd.read_csv(file2)
         if not df_file1.columns.equals(df_file2.columns):
-            if db1 == "mysql":
+            # if db1 == "mysql":
+            if self.db_type == "mysql":
                 df_file2.columns = df_file1.columns
             else:
                 df_file1.columns = df_file2.columns

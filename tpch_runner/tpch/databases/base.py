@@ -161,9 +161,10 @@ class TPCH_Runner:
     db_type = ""
     query_dir = Path(__file__).parents[1].joinpath("queries")
 
-    def __init__(self, connection: Connection):
+    def __init__(self, connection: Connection, scale: str = "small"):
         self._conn = connection
         self.meta = TestResultManager(setup_database())
+        self.scale = scale
 
     def create_tables(self):
         pass
@@ -247,7 +248,10 @@ class TPCH_Runner:
             print("Test result will be saved in:", result_dir)
             result_dir.mkdir(exist_ok=True)
             self.meta.add_powertest(
-                testtime=test_time, result_folder=str(result_dir.stem)
+                testtime=test_time,
+                result_folder=str(result_dir.stem),
+                db_type=self.db_type,
+                scale=self.scale,
             )
 
         for _query_idx in QUERY_ORDER[0]:

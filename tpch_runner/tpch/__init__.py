@@ -8,13 +8,16 @@ from typing import Any
 
 import pandas as pd
 
+from tpch_runner.config import app_root
+
 Result = namedtuple(
     "Result",
     ["db", "idx", "success", "rowcount", "rset", "columns", "result_dir", "metadb"],
 )
 
 DATA_DIR = Path("~/data/tpch/small").expanduser()
-RESULT_DIR = Path("~/data/result").expanduser()
+RESULT_DIR = Path(app_root).expanduser().joinpath("results")
+ANSWER_DIR = Path(__file__).parent.joinpath("answer")
 
 DATA_DIR.mkdir(exist_ok=True)
 RESULT_DIR.mkdir(exist_ok=True)
@@ -94,7 +97,7 @@ def post_process(func):
                     result_csv=csv_file_name,
                     query_name=idx,
                     runtime=runtime,
-                    powertest_folder=result_folder,
+                    result_folder=result_folder,
                 )
             return success, rowcount, rset, columns, runtime
         return _results
