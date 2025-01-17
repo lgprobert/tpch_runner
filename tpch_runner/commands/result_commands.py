@@ -1,4 +1,3 @@
-from datetime import datetime
 from typing import Any
 
 import click
@@ -6,16 +5,7 @@ from rich_click import RichGroup
 from tabulate import tabulate
 
 from ..tpch.databases import meta
-from . import CONTEXT_SETTINGS
-
-
-def format_datetime(atime: datetime) -> str:
-    if atime.date() == datetime.now().date():
-        fmt_datetime_value = atime.strftime("%H:%M:%S")
-    else:
-        fmt_datetime_value = atime.strftime("%Y-%m-%d")
-
-    return fmt_datetime_value
+from . import CONTEXT_SETTINGS, format_datetime
 
 
 @click.group(
@@ -79,6 +69,39 @@ def ls(ctx, type_: str, single: bool):
     print(tabulate(report, tablefmt="psql", headers=headers))
 
 
+@cli.command("compare")
+@click.option(
+    "-s",
+    "--source",
+    help="Source test ID",
+)
+@click.option(
+    "-d",
+    "--dest",
+    help="Destination test ID",
+)
+@click.pass_obj
+def compare(ctx, source, dest) -> None:
+    """Compare two test results."""
+    rm: meta.TestResultManager = ctx["rm"]
+
+    src_result: meta.TestResult = rm.get_test_results_from_powertest(test_id=source)[0]
+    dest_result: meta.TestResult = rm.get_test_results_from_powertest(test_id=dest)[0]
+
+    report: list[tuple] = []
+    report.append(("Database", src_result.db_type, dest_result.db_type))
+    report.append(("Query", src_result.query_name, dest_result.query_name))
+    report.append(("Success", src_result.success, dest_result.success))
+    report.append(("Rowcount", src_result.rowcount, dest_result.rowcount))
+    report.append(
+        ("Runtime (s)", f"{src_result.runtime: .4f}", f"{dest_result.runtime: .4f}")
+    )
+
+    print(
+        tabulate(report, tablefmt="psql", headers=["Attribute", "Source", "Destination"])
+    )
+
+
 @cli.command("show")
 @click.argument("test_id")
 @click.pass_obj
@@ -100,8 +123,8 @@ def show(ctx, test_id: int):
         report = []
         for k, v in result_detail.items():
             report.append((k, v))
-        print("Test Result Detail:")
-        print(tabulate(report, tablefmt="psql", headers=["Attributes", "Value"]))
+        print("\nTest Result Detail:")
+        print(tabulate(report, tablefmt="psql", headers=["Attribute", "Value"]))
         print()
 
         if query.count("\n") + len(df) > 25:
@@ -137,17 +160,18 @@ def show(ctx, test_id: int):
 @click.argument("test_id")
 @click.pass_obj
 def delete(ctx, test_id: int):
-    """Delete a test record."""
+    """Delete a test record.
+
+    TEST_ID: ID of the test to delete.
+    """
     rm: meta.TestResultManager = ctx["rm"]
 
     try:
         rm.delete_test_result(test_id)
     except Exception as e:
-        click.echo(f"Fails to show details for test ID {test_id}.\nException: {e}")
+        click.echo(f"Fails to delete test result {test_id}.\nException: {e}")
         return
 
-
-cli.add_command(ls)
 
 if __name__ == "__main__":
     cli()

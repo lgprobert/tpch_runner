@@ -7,6 +7,7 @@ from .. import logger
 from . import CONTEXT_SETTINGS
 from .power_commands import cli as powercli
 from .result_commands import cli as resultcli
+from .run_commands import cli as runcli
 from .server_commands import cli as servercli
 
 
@@ -15,29 +16,13 @@ from .server_commands import cli as servercli
 @click.pass_context
 def cli(ctx: click.Context, verbose: bool):
     """Rapids Installer CLI tool"""
+    ctx.ensure_object(dict)
     ctx.obj = {"verbose": verbose}
-    # ctx.obj["app"] = app
     if verbose:
         for handler in logger.handlers:
-            if isinstance(handler, logging.StreamHandler):
-                handler.setLevel(logging.DEBUG)
-            elif isinstance(handler, logging.FileHandler):
-                handler.setLevel(logging.DEBUG)
+            handler.setLevel(logging.DEBUG)
         logger.setLevel(logging.DEBUG)
         logger.debug(f"Verbose mode is on for {logger.name}.")
-
-
-@cli.command("log")
-@click.pass_obj
-def log(ctx: dict):
-    """Test logger capabilities"""
-
-    click.echo(f"verbose level: {ctx['verbose']}")
-    click.echo(f"current logger level: {logger.level}")
-    logger.info("info log")
-    logger.warning("warning log")
-    logger.error("error log")
-    logger.debug("debug log")
 
 
 @cli.command("version")
@@ -50,6 +35,7 @@ def main():
     cli.add_command(servercli)
     cli.add_command(resultcli)
     cli.add_command(powercli)
+    cli.add_command(runcli)
     cli()
 
 
