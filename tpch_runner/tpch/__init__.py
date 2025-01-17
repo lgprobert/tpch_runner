@@ -4,7 +4,7 @@ from collections import namedtuple
 from datetime import datetime
 from functools import wraps
 from pathlib import Path
-from typing import Any
+from typing import Any, NamedTuple, Optional
 
 import pandas as pd
 
@@ -12,8 +12,17 @@ from tpch_runner.config import app_root
 
 Result = namedtuple(
     "Result",
-    ["db", "idx", "success", "rowcount", "rset", "columns", "result_dir", "metadb"],
+    ["success", "rowcount", "rset", "columns", "result_file"],
 )
+
+
+class InternalQueryArgs(NamedTuple):
+    db: str
+    no_report: bool
+    idx: int
+    result_dir: Optional[Path]
+    metadb: Any
+
 
 DATA_DIR = Path("~/data/tpch/small").expanduser()
 RESULT_DIR = Path(app_root).expanduser().joinpath("results")
@@ -46,8 +55,10 @@ def timeit(func):
         runtime = round((end_time - start_time), 4)
         print(f"{runtime:.4f} seconds.")
 
-        if isinstance(results, tuple):
+        if isinstance(results, tuple) and func.__name__ != "run_query":
             return (*results, runtime)
+        elif isinstance(results, tuple) and func.__name__ == "run_query":
+            return results[0], runtime, results[2]
         else:
             return results, runtime
 
@@ -60,46 +71,38 @@ def post_process(func):
         from .databases.meta import TestResultManager
 
         metadb: TestResultManager
-        result_dir: Path
+        _args: InternalQueryArgs
 
         func_name = func.__wrapped__.__name__
         if func_name == "run_query":
-            # breakpoint()
-            _results, no_report, runtime = func(*args, **kwargs)
-            (
-                db_type,
-                idx,
-                success,
-                rowcount,
-                rset,
-                columns,
-                result_dir,
-                metadb,
-            ) = _results
+            _results, runtime, _args = func(*args, **kwargs)
+            success, rowcount, rset, columns, _ = _results
+            metadb = _args.metadb
 
-            if not no_report:
+            csv_file_name: Optional[str] = None
+            if not _args.no_report:
                 df = pd.DataFrame(rset, columns=columns)
                 current_timestamp = datetime.now().strftime("%Y-%m-%d-%H%M%S")
                 csv_file_name = "{}_{}_{}.csv".format(
-                    db_type, f"q{idx}", current_timestamp
+                    _args.db, f"q{_args.idx}", current_timestamp
                 )
 
-                if result_dir:
-                    csv_file_name = f"{idx}.csv"
-                    df.to_csv(Path(result_dir).joinpath(csv_file_name), index=False)
+                if _args.result_dir is not None:
+                    csv_file_name = f"{_args.idx}.csv"
+                    df.to_csv(_args.result_dir.joinpath(csv_file_name), index=False)
                 else:
                     df.to_csv(RESULT_DIR.joinpath(csv_file_name), index=False)
-                result_folder = str(result_dir.stem) if result_dir else None
+                result_folder = str(_args.result_dir.stem) if _args.result_dir else None
                 metadb.add_test_result(
-                    db_type=db_type,
+                    db_type=_args.db,
                     success=success,
                     rowcount=rowcount,
                     result_csv=csv_file_name,
-                    query_name=idx,
+                    query_name=_args.idx,
                     runtime=runtime,
                     result_folder=result_folder,
                 )
-            return success, rowcount, rset, columns, runtime
+            return Result(success, rowcount, rset, columns, csv_file_name), runtime, None
         return _results
 
     return wrapper

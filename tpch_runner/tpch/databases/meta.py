@@ -92,23 +92,31 @@ class TestResultManager:
         except Exception as e:
             raise DatabaseError(None, None, e)
 
-    def update_powertest(self, test_id: str, success: bool, runtime: float):
+    def update_powertest(
+        self,
+        success: bool,
+        runtime: float,
+        test_id: Optional[int] = None,
+        result_folder: Optional[str] = None,
+    ):
         """
         Sets the runtime for a given PowerTest record after the test finishes.
 
         Parameters:
-        test_id (str): The identifier of the test to update.
+        result_folder (str): The identifier of the test to update.
         success (bool): If powertest succeed in all or not.
         runtime (float): The total runtime of the test.
         """
         try:
             with self.Session() as session:
-                power_test = (
-                    session.query(PowerTest).filter_by(result_folder=test_id).first()
-                )
+                query = session.query(PowerTest)
+                if test_id is not None:
+                    power_test = query.filter_by(id=test_id).first()
+                elif result_folder:
+                    power_test = query.filter_by(result_folder=result_folder).first()
 
                 if power_test is None:
-                    raise ValueError(f"PowerTest with test_id {test_id} not found.")
+                    raise ValueError(f"PowerTest {result_folder} not found.")
 
                 power_test.success = success
                 power_test.runtime = runtime
@@ -117,25 +125,27 @@ class TestResultManager:
 
                 print(
                     "Test {} result updated: success={}, runtime={}s".format(
-                        test_id, success, runtime
+                        result_folder, success, runtime
                     )
                 )
         except Exception as e:
             raise DatabaseError(None, None, e)
 
     def get_powertests(
-        self, db_type: Optional[str] = None, result_folder: Optional[str] = None
-    ):
-        session = self.Session()
-        try:
-            query = session.query(PowerTest)
-            if result_folder:
+        self,
+        test_id: Optional[int] = None,
+        db_type: Optional[str] = None,
+        result_folder: Optional[str] = None,
+    ) -> list[PowerTest]:
+        with self.Session() as session:
+            query = session.query(PowerTest).options(joinedload(PowerTest.results))
+            if test_id is not None:
+                query = query.filter(PowerTest.id == test_id)
+            elif result_folder:
                 query = query.filter(PowerTest.result_folder == result_folder)
             elif db_type:
                 query = query.filter(PowerTest.db_type == db_type)
             return query.all()
-        finally:
-            session.close()
 
     def delete_powertest(
         self, id: Optional[int] = None, result_folder: Optional[str] = None
@@ -179,6 +189,18 @@ class TestResultManager:
                 logger.info(
                     f"Compare {result_file}: {result.compare_against_answer(result_file)}"
                 )
+
+    def get_powertest_runtime(self, test_id: int) -> tuple[str, str, float, list[float]]:
+        query_runtime: list[float] = []
+        with self.Session() as session:
+            query = session.query(PowerTest).options(joinedload(PowerTest.results))
+            result = query.filter(PowerTest.id == test_id).first()
+            total_runtime = result.runtime
+            db_type = result.db_type
+            test_name = result.result_folder
+            for record in result.results:
+                query_runtime.append(record.runtime)
+        return db_type, test_name, total_runtime, query_runtime
 
     def add_test_result(
         self,

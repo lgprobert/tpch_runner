@@ -44,7 +44,7 @@ class PGDB(base.Connection):
 class PG_TPCH(base.TPCH_Runner):
     db_type = "pg"
 
-    def __init__(self, connection: PGDB):
+    def __init__(self, connection: PGDB, scale: str = "small"):
         super().__init__(connection)
         self._conn = connection
 
