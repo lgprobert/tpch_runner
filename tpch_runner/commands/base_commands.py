@@ -3,13 +3,14 @@ import logging
 import click
 from rich_click import RichGroup
 
-from .. import logger
 from . import CONTEXT_SETTINGS
 from .db_commands import cli as dbcli
 from .power_commands import cli as powercli
 from .result_commands import cli as resultcli
 from .run_commands import cli as runcli
 from .server_commands import cli as servercli
+
+logger = logging.getLogger(__name__)
 
 
 @click.group(cls=RichGroup, context_settings=CONTEXT_SETTINGS)
@@ -20,9 +21,10 @@ def cli(ctx: click.Context, verbose: bool):
     ctx.ensure_object(dict)
     ctx.obj = {"verbose": verbose}
     if verbose:
-        for handler in logger.handlers:
+        root_logger = logging.getLogger()
+        for handler in root_logger.handlers:
             handler.setLevel(logging.DEBUG)
-        logger.setLevel(logging.DEBUG)
+        root_logger.setLevel(logging.DEBUG)
         logger.debug(f"Verbose mode is on for {logger.name}.")
 
 

@@ -40,7 +40,6 @@ def start_fastapi():
     venv_path = Path(__file__).parents[3].joinpath("venv")
     app_path = Path(__file__).parents[1]
     log_fpath = "fastapi.log"
-    # breakpoint()
     with open(log_fpath, "w") as log_file:
         process = subprocess.Popen(
             [

@@ -52,9 +52,10 @@ class MySQLDB(base.Connection):
 class MySQL_TPCH(base.TPCH_Runner):
     db_type = "mysql"
 
-    def __init__(self, connection: MySQLDB, scale: str = "small"):
-        super().__init__(connection)
+    def __init__(self, connection: MySQLDB, db_id: int, scale: str = "small"):
+        super().__init__(connection, db_id, scale),
         self._conn = connection
+        self.db_id = db_id
 
     @timeit
     def create_tables(self):

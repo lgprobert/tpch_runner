@@ -44,9 +44,10 @@ class PGDB(base.Connection):
 class PG_TPCH(base.TPCH_Runner):
     db_type = "pg"
 
-    def __init__(self, connection: PGDB, scale: str = "small"):
-        super().__init__(connection)
+    def __init__(self, connection: PGDB, db_id: int, scale: str = "small"):
+        super().__init__(connection, db_id, scale),
         self._conn = connection
+        self.db_id = db_id
 
     @timeit
     def create_tables(self):

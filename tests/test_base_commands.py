@@ -60,7 +60,6 @@ class TestBaseCommands(unittest.TestCase):
                 self.assertEqual(logger.getEffectiveLevel(), logging.DEBUG)
                 for handler in logger.handlers:
                     self.assertEqual(handler.level, logging.DEBUG)
-                # breakpoint()
                 self.assertTrue(
                     any(
                         f"Verbose mode is on for {logger.name}" in msg

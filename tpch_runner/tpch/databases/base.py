@@ -164,10 +164,11 @@ class TPCH_Runner:
     db_type = ""
     query_dir = Path(__file__).parents[1].joinpath("queries")
 
-    def __init__(self, connection: Connection, scale: str = "small"):
+    def __init__(self, connection: Connection, db_id: int, scale: str = "small"):
         self._conn = connection
         self.meta = TestResultManager(setup_database())
         self.scale = scale
+        self.db_id = db_id
 
     def create_tables(self):
         pass
@@ -240,6 +241,7 @@ class TPCH_Runner:
             result_dir=result_dir,
             no_report=no_report,
             metadb=self.meta,
+            db_id=self.db_id,
         )
         try:
             with self._conn as conn:
@@ -277,6 +279,7 @@ class TPCH_Runner:
                 result_folder=str(result_dir.stem),
                 db_type=self.db_type,
                 scale=self.scale,
+                db_id=self.db_id,
             )
 
         result: Result

@@ -12,14 +12,14 @@ from . import CONTEXT_SETTINGS
 
 
 def get_db(
-    rm: meta.DBManager, id: Optional[int] = None, alias: Optional[str] = None
+    rm: meta.DBManager, id: Optional[int] = None, alias_: Optional[str] = None
 ) -> meta.Database:
-    if not id and not alias:
+    if not id and not alias_:
         click.echo("Either database ID or alias is required.")
         sys.exit(1)
-    db = rm.get_databases(id=id, alias=alias)[0]
+    db: meta.Database = rm.get_databases(id=id, alias=alias_)[0]
     if not db:
-        click.echo(f"Database {id} or alias {alias} not found.")
+        click.echo(f"Database {id} or alias {alias_} not found.")
         sys.exit(1)
     elif db.db_type not in meta.db_classes:
         click.echo(f"Unsupported database type: {db.db_type}")
@@ -27,7 +27,7 @@ def get_db(
     return db
 
 
-def get_db_manager(db: meta.Database) -> base.TPCH_Runner:
+def get_db_manager(db: meta.Database, scale: str = "small") -> base.TPCH_Runner:
     conn_class: Type[base.Connection]
     db_class: Type[base.TPCH_Runner]
     if db.db_type == "mysql":
@@ -50,7 +50,9 @@ def get_db_manager(db: meta.Database) -> base.TPCH_Runner:
         user=db.user,
         password=db.password,
     )
-    db_manager: base.TPCH_Runner = db_class(dbconn)
+    db_manager: base.TPCH_Runner = db_class(
+        dbconn, db_id=db.id, scale=scale  # type: ignore
+    )
     return db_manager
 
 
@@ -124,7 +126,10 @@ def add(ctx, db_type, host, port, user, password, dbname, alias, cli_password) -
 @click.option("-a", "--alias", "_alias", help="Database alias")
 @click.pass_obj
 def delete(ctx, db_id, _alias) -> None:
-    """Delete a database connection."""
+    """Delete a database connection.
+
+    DB_ID: database ID
+    """
     rm: meta.DBManager = ctx["rm"]
     if not db_id and not _alias:
         click.echo("Either database ID or alias is required.")
@@ -154,7 +159,10 @@ def delete(ctx, db_id, _alias) -> None:
 def update(
     ctx, db_id, db_type, host, port, user, password, dbname, alias, cli_password
 ) -> None:
-    """Update a database connection."""
+    """Update a database connection.
+
+    DB_ID: database ID
+    """
     rm: meta.DBManager = ctx["rm"]
     if not db_id and not alias:
         click.echo("Either database ID or alias is required.")
@@ -170,13 +178,15 @@ def update(
 @click.option("-a", "--alias", "alias", help="Database alias")
 @click.pass_obj
 def tables(ctx, db_id, alias) -> None:
-    """List tables in a database."""
+    """List tables in a database.
+
+    DB_ID: database ID
+    """
     rm: meta.DBManager = ctx["rm"]
     if not db_id and not alias:
         click.echo("Either database ID or alias is required.")
         sys.exit(1)
     tables = rm.list_tables(db_id=db_id, alias=alias)
-    # breakpoint()
     print(tabulate(tables, tablefmt="psql", headers=["Table"]))
 
 
@@ -185,9 +195,12 @@ def tables(ctx, db_id, alias) -> None:
 @click.option("-a", "--alias", "alias", help="Database alias")
 @click.pass_obj
 def create(ctx, db_id, alias) -> None:
-    """Create all TPC-H tables."""
+    """Create all TPC-H tables.
+
+    DB_ID: database ID
+    """
     rm: meta.DBManager = ctx["rm"]
-    db = get_db(rm, id=db_id, alias=alias)
+    db = get_db(rm, id=db_id, alias_=alias)
     db_manager: base.TPCH_Runner = get_db_manager(db)
     db_manager.create_tables()
 
@@ -205,9 +218,12 @@ def create(ctx, db_id, alias) -> None:
 )
 @click.pass_obj
 def load(ctx, db_id, alias, table) -> None:
-    """Load specified table or all tables."""
+    """Load specified table or all tables.
+
+    DB_ID: database ID
+    """
     rm: meta.DBManager = ctx["rm"]
-    db = get_db(rm, id=db_id, alias=alias)
+    db = get_db(rm, id=db_id, alias_=alias)
     db_manager: base.TPCH_Runner = get_db_manager(db)
 
     if table:
@@ -221,9 +237,12 @@ def load(ctx, db_id, alias, table) -> None:
 @click.option("-a", "--alias", "alias", help="Database alias")
 @click.pass_obj
 def reload(ctx, db_id, alias) -> None:
-    """Reload all tables, truncate before reload."""
+    """Reload all tables, truncate before reload.
+
+    DB_ID: database ID
+    """
     rm: meta.DBManager = ctx["rm"]
-    db = get_db(rm, id=db_id, alias=alias)
+    db = get_db(rm, id=db_id, alias_=alias)
     db_manager: base.TPCH_Runner = get_db_manager(db)
     db_manager.truncate_table()
     db_manager.load_data()
@@ -243,13 +262,15 @@ def reload(ctx, db_id, alias) -> None:
 )
 @click.pass_obj
 def truncate(ctx, db_id, alias, table) -> None:
-    """Trucate specified table or all tables."""
+    """Trucate specified table or all tables.
+
+    DB_ID: database ID
+    """
     rm: meta.DBManager = ctx["rm"]
-    db = get_db(rm, id=db_id, alias=alias)
+    db = get_db(rm, id=db_id, alias_=alias)
     db_manager: base.TPCH_Runner = get_db_manager(db)
     if not table:
         table = "all"
-    # breakpoint()
     db_manager.truncate_table(table)
 
 
@@ -266,12 +287,15 @@ def truncate(ctx, db_id, alias, table) -> None:
 )
 @click.pass_obj
 def drop(ctx, db_id, alias, table) -> None:
-    """Drop specified table or all tables."""
+    """Drop specified table or all tables.
+
+    DB_ID: database ID
+    """
     rm: meta.DBManager = ctx["rm"]
     if table and table not in all_tables:
         click.echo(f"Unsupported table: {table}")
         sys.exit(1)
-    db = get_db(rm, id=db_id, alias=alias)
+    db = get_db(rm, id=db_id, alias_=alias)
     db_manager: base.TPCH_Runner = get_db_manager(db)
 
     if not table:

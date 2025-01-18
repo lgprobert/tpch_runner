@@ -4,7 +4,7 @@ from unittest.mock import MagicMock
 from sqlalchemy import create_engine
 from sqlalchemy.sql import text
 
-from tpch_runner.tpch.databases.meta import Base, TestResultManager
+from tpch_runner.meta import Base, TestResultManager
 
 
 class TestGetPowerTestRuntime(unittest.TestCase):

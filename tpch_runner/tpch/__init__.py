@@ -33,6 +33,7 @@ class InternalQueryArgs(NamedTuple):
     idx: int
     result_dir: Optional[Path]
     metadb: Any
+    db_id: int
 
 
 DATA_DIR = Path("~/data/tpch/small").expanduser()
@@ -112,6 +113,7 @@ def post_process(func):
                     query_name=_args.idx,
                     runtime=runtime,
                     result_folder=result_folder,
+                    db_id=_args.db_id,
                 )
             return Result(success, rowcount, rset, columns, csv_file_name), runtime, None
         return _results

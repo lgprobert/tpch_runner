@@ -106,7 +106,10 @@ def compare(ctx, source, dest) -> None:
 @click.argument("test_id")
 @click.pass_obj
 def show(ctx, test_id: int):
-    """Show result data and result set of a specific test."""
+    """Show result data and result set of a specific test.
+
+    TEST_ID: ID of the test to show.
+    """
     rm: meta.TestResultManager = ctx["rm"]
 
     try:

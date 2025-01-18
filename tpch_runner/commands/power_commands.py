@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Any
+from typing import Any, Optional
 
 import click
 import matplotlib.pyplot as plt
@@ -77,6 +77,29 @@ def delete(ctx, test_id: int):
         rm.delete_powertest(test_id)
     except Exception as e:
         click.echo(f"Fails to delete Powertest result {test_id}.\nException: {e}")
+        return
+
+
+@cli.command("update")
+@click.argument("test_id")
+@click.option("-c", "--comment", help="Test comment")
+@click.option("-s", "--scale", help="Data scale")
+@click.pass_obj
+def update(ctx, test_id: int, comment: Optional[str] = None, scale: Optional[str] = None):
+    """Update a Powertest record.
+
+    TEST_ID: ID of the test to update.
+    """
+    rm: meta.TestResultManager = ctx["rm"]
+
+    try:
+        rm.update_powertest_comment(
+            test_id=test_id,
+            comment=comment,
+            scale=scale,
+        )
+    except Exception as e:
+        click.echo(f"Fails to update Powertest result {test_id}.\nException: {e}")
         return
 
 

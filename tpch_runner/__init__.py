@@ -1,8 +1,10 @@
 # flake8: noqa: F401
 import logging
+from pathlib import Path
 
 from . import app, commands, config, tpch
 from ._version import __version__
+from .config import app_root
 
 
 def setup_logger(level=logging.WARNING):
@@ -18,7 +20,9 @@ def setup_logger(level=logging.WARNING):
     stream_handler.setLevel(logging.INFO)
     stream_handler.setFormatter(stream_formatter)
 
-    file_handler = logging.FileHandler("tpch_runner.log")
+    file_handler = logging.FileHandler(
+        Path(app_root).expanduser().joinpath("tpch_runner.log")
+    )
     file_handler.setLevel(logging.INFO)
     file_handler.setFormatter(log_formatter)
 

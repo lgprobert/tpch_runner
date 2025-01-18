@@ -1,3 +1,4 @@
+import logging
 import shutil
 from datetime import datetime
 from importlib import import_module
@@ -20,11 +21,12 @@ from sqlalchemy.exc import DatabaseError
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import joinedload, relationship, sessionmaker
 
-from tpch_runner import logger
 from tpch_runner.config import app_root
 
 from .tpch import RESULT_DIR
 from .tpch.databases.results import Result
+
+logger = logging.getLogger(__name__)
 
 Base = declarative_base()
 
@@ -45,6 +47,10 @@ class Database(Base):  # type: ignore
     user = Column(String, nullable=False)
     password = Column(String, nullable=False)
     dbname = Column(String, nullable=False)
+    version = Column(String, nullable=True)
+    config = Column(String, nullable=True)
+    scale = Column(String, nullable=False, default="small")
+    description = Column(String, nullable=True)
 
 
 class TestResult(Base):  # type: ignore
@@ -61,6 +67,8 @@ class TestResult(Base):  # type: ignore
     result_folder = Column(
         String, ForeignKey("powertests.result_folder", ondelete="CASCADE")
     )
+    database_id = Column(Integer, ForeignKey("databases.id"), nullable=False)
+    database = relationship("Database", backref="results")
     power_test = relationship("PowerTest", backref="results", passive_deletes=True)
 
 
@@ -74,6 +82,9 @@ class PowerTest(Base):  # type: ignore
     testtime = Column(DateTime, default=datetime.utcnow, nullable=False)
     success = Column(Boolean, nullable=True)
     runtime = Column(Float, default=0, nullable=True)
+    comment = Column(String, nullable=True)
+    database_id = Column(Integer, ForeignKey("databases.id"), nullable=False)
+    database = relationship("Database", backref="powertests")
 
 
 def setup_database(db_url=f"sqlite:///{Path(app_root).expanduser()}/results.db"):
@@ -98,7 +109,7 @@ class DBManager:
             if id:
                 return session.query(Database).filter_by(id=id).all()
             elif alias:
-                return session.query(Database).filter_by(alias=alias).first()
+                return session.query(Database).filter_by(alias=alias).all()
             return session.query(Database).all()
 
     def add_database(
@@ -138,6 +149,7 @@ class DBManager:
                     )
                 )
                 session.commit()
+            logger.info("Added database connection.")
         except Exception as e:
             raise DatabaseError(None, None, e)
 
@@ -171,6 +183,7 @@ class DBManager:
                     if alias:
                         db.alias = alias
                     session.commit()
+            logger.info(f"Updated database {db_id}.")
         except Exception as e:
             raise DatabaseError(None, None, e)
 
@@ -185,6 +198,8 @@ class DBManager:
                 if db:
                     session.delete(db)
                     session.commit()
+            record = db_id if db_id else alias
+            logger.info(f"Deleted database {record}.")
         except Exception as e:
             raise DatabaseError(None, None, e)
 
@@ -240,7 +255,12 @@ class TestResultManager:
             dbapi_connection.execute("PRAGMA foreign_keys = ON;")
 
     def add_powertest(
-        self, testtime: datetime, result_folder: str, db_type: str, scale: str = "small"
+        self,
+        db_id: int,
+        testtime: datetime,
+        result_folder: str,
+        db_type: str,
+        scale: str = "small",
     ):
         try:
             with self.Session() as session:
@@ -250,9 +270,11 @@ class TestResultManager:
                         result_folder=result_folder,
                         db_type=db_type,
                         scale=scale,
+                        database_id=db_id,
                     )
                 )
                 session.commit()
+            logger.info(f"PowerTest added: {result_folder}")
         except Exception as e:
             raise DatabaseError(None, None, e)
 
@@ -287,11 +309,29 @@ class TestResultManager:
 
                 session.commit()
 
-                print(
-                    "Test {} result updated: success={}, runtime={}s".format(
-                        result_folder, success, runtime
-                    )
+            logger.info(
+                "Test {} result updated: success={}, runtime={}s".format(
+                    result_folder, success, runtime
                 )
+            )
+        except Exception as e:
+            raise DatabaseError(None, None, e)
+
+    def update_powertest_comment(
+        self, test_id: int, comment: Optional[str], scale: Optional[str]
+    ):
+        try:
+            with self.Session() as session:
+                power_test = session.query(PowerTest).filter_by(id=test_id).first()
+                if power_test is None:
+                    raise ValueError(f"PowerTest {test_id} not found.")
+
+                power_test.comment = comment
+                power_test.scale = scale
+
+                session.commit()
+
+            logger.info(f"PowerTest {test_id} updated.")
         except Exception as e:
             raise DatabaseError(None, None, e)
 
@@ -321,7 +361,6 @@ class TestResultManager:
                     query = query.filter(PowerTest.id == id)
                     result_folder = query.one().result_folder
                     query = query.filter(PowerTest.result_folder == result_folder)
-                # elif result_folder:
 
                 if not result_folder:
                     raise RuntimeError("Result folder can't be None")
@@ -333,8 +372,10 @@ class TestResultManager:
                 ).delete()
                 deleted_count = query.delete()
                 session.commit()
-                logger.info("Deleted.")
-                return deleted_count
+
+            record = id if id else result_folder
+            logger.info(f"Powertest record {record} deleted.")
+            return deleted_count
         except Exception as e:
             raise e
 
@@ -375,6 +416,7 @@ class TestResultManager:
         query_name,
         runtime,
         result_folder,
+        db_id,
     ):
 
         try:
@@ -387,9 +429,11 @@ class TestResultManager:
                     query_name=query_name,
                     runtime=runtime,
                     result_folder=result_folder,
+                    database_id=db_id,
                 )
                 session.add(new_result)
                 session.commit()
+            logger.info(f"Test result added: {query_name} on {db_type}.")
         except Exception as e:
             raise e
 
@@ -484,6 +528,7 @@ class TestResultManager:
                     result_file.unlink()
                 deleted_count = query.delete()
                 session.commit()
-                return deleted_count
+            logger.info(f"Test result {test_id} deleted.")
+            return deleted_count
         except Exception as e:
             raise e
