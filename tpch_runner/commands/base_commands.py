@@ -5,6 +5,7 @@ from rich_click import RichGroup
 
 from .. import logger
 from . import CONTEXT_SETTINGS
+from .db_commands import cli as dbcli
 from .power_commands import cli as powercli
 from .result_commands import cli as resultcli
 from .run_commands import cli as runcli
@@ -32,6 +33,7 @@ def version() -> None:
 
 
 def main():
+    cli.add_command(dbcli)
     cli.add_command(servercli)
     cli.add_command(resultcli)
     cli.add_command(powercli)

@@ -15,7 +15,7 @@ def setup_logger(level=logging.WARNING):
     logger.setLevel(level)
 
     stream_handler = logging.StreamHandler()
-    stream_handler.setLevel(logging.WARNING)
+    stream_handler.setLevel(logging.INFO)
     stream_handler.setFormatter(stream_formatter)
 
     file_handler = logging.FileHandler("tpch_runner.log")

@@ -1,6 +1,7 @@
 import os
 import signal
 import subprocess
+from pathlib import Path
 
 import click
 import psutil
@@ -36,9 +37,23 @@ def start_fastapi():
         return
 
     print("Starting FastAPI...")
-    process = subprocess.Popen(
-        ["uvicorn", "main:app", "--host", "127.0.0.1", "--port", "8000"]
-    )
+    venv_path = Path(__file__).parents[3].joinpath("venv")
+    app_path = Path(__file__).parents[1]
+    log_fpath = "fastapi.log"
+    # breakpoint()
+    with open(log_fpath, "w") as log_file:
+        process = subprocess.Popen(
+            [
+                "bash",
+                "-c",
+                "source {}/bin/activate && uvicorn tpch_runner.app:app --host 127.0.0.1 --port 8000".format(  # noqa: E501
+                    venv_path
+                ),
+            ],
+            cwd=f"{app_path}",
+            stdout=log_file,
+            stderr=log_file,
+        )
 
     with open(PID_FILE, "w") as pid_file:
         pid_file.write(str(process.pid))

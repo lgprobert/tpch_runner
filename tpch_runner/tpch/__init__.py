@@ -15,6 +15,17 @@ Result = namedtuple(
     ["success", "rowcount", "rset", "columns", "result_file"],
 )
 
+all_tables = [
+    "region",
+    "nation",
+    "customer",
+    "part",
+    "supplier",
+    "partsupp",
+    "orders",
+    "lineitem",
+]
+
 
 class InternalQueryArgs(NamedTuple):
     db: str
@@ -68,7 +79,7 @@ def timeit(func):
 def post_process(func):
     @wraps(func)
     def wrapper(*args, **kwargs) -> Any:
-        from .databases.meta import TestResultManager
+        from ..meta import TestResultManager
 
         metadb: TestResultManager
         _args: InternalQueryArgs

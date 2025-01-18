@@ -1,5 +1,6 @@
 import shutil
 from datetime import datetime
+from importlib import import_module
 from pathlib import Path
 from typing import Optional
 
@@ -22,10 +23,28 @@ from sqlalchemy.orm import joinedload, relationship, sessionmaker
 from tpch_runner import logger
 from tpch_runner.config import app_root
 
-from .. import RESULT_DIR
-from .results import Result
+from .tpch import RESULT_DIR
+from .tpch.databases.results import Result
 
 Base = declarative_base()
+
+db_classes = {
+    "mysql": ".tpch.databases.mysqldb.MySQLDB",
+    "pg": ".tpch.databases.pgdb.PGDB",
+}
+
+
+class Database(Base):  # type: ignore
+    __tablename__ = "databases"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    db_type = Column(String, nullable=False)
+    alias = Column(String, nullable=True, unique=True)
+    host = Column(String, nullable=False)
+    port = Column(String, nullable=False)
+    user = Column(String, nullable=False)
+    password = Column(String, nullable=False)
+    dbname = Column(String, nullable=False)
 
 
 class TestResult(Base):  # type: ignore
@@ -34,7 +53,6 @@ class TestResult(Base):  # type: ignore
     id = Column(Integer, primary_key=True, autoincrement=True)
     testtime = Column(DateTime, default=datetime.utcnow, nullable=False)
     db_type = Column(String, nullable=False)
-    # scale = Column(String, nullable=False)
     success = Column(Boolean, nullable=False)
     rowcount = Column(Integer, nullable=False)
     result_csv = Column(String, nullable=False)
@@ -43,7 +61,6 @@ class TestResult(Base):  # type: ignore
     result_folder = Column(
         String, ForeignKey("powertests.result_folder", ondelete="CASCADE")
     )
-    # power_test = relationship("PowerTest", backref="results")
     power_test = relationship("PowerTest", backref="results", passive_deletes=True)
 
 
@@ -57,14 +74,161 @@ class PowerTest(Base):  # type: ignore
     testtime = Column(DateTime, default=datetime.utcnow, nullable=False)
     success = Column(Boolean, nullable=True)
     runtime = Column(Float, default=0, nullable=True)
-    # test_results = relationship("TestResult", backref="power_test")
 
 
 def setup_database(db_url=f"sqlite:///{Path(app_root).expanduser()}/results.db"):
-    logger.info("DB URL: %s", db_url)
     engine = create_engine(db_url)
     Base.metadata.create_all(engine)
     return engine
+
+
+class DBManager:
+    def __init__(self, engine):
+        self.Session = sessionmaker(bind=engine)
+
+    def get_databases(
+        self, id: Optional[int] = None, alias: Optional[str] = None
+    ) -> list[Database]:
+        """Return list of all database entries from metadb.
+
+        Returns:
+            list[Database]: list of Database objects.
+        """
+        with self.Session() as session:
+            if id:
+                return session.query(Database).filter_by(id=id).all()
+            elif alias:
+                return session.query(Database).filter_by(alias=alias).first()
+            return session.query(Database).all()
+
+    def add_database(
+        self,
+        db_type: str,
+        host: str,
+        port: str,
+        user: str,
+        password: str,
+        dbname: str,
+        alias: Optional[str] = None,
+    ):
+        """Add a database connection to metadb.
+
+        Args:
+            db_type (str): database type, supported: 'pg', 'mysql'
+            host (str): hostname or IP address
+            port (str): port number
+            user (str): connection username
+            password (str): connection password
+            dbname (str): db schema (or database) name
+
+        Raises:
+            DatabaseError: any error occurred while executing SQL command.
+        """
+        try:
+            with self.Session() as session:
+                session.add(
+                    Database(
+                        db_type=db_type,
+                        host=host,
+                        port=port,
+                        user=user,
+                        password=password,
+                        dbname=dbname,
+                        alias=alias,
+                    )
+                )
+                session.commit()
+        except Exception as e:
+            raise DatabaseError(None, None, e)
+
+    def update_database(
+        self,
+        db_id: int,
+        db_type: Optional[str] = None,
+        host: Optional[str] = None,
+        port: Optional[str] = None,
+        user: Optional[str] = None,
+        password: Optional[str] = None,
+        dbname: Optional[str] = None,
+        alias: Optional[str] = None,
+    ):
+        try:
+            with self.Session() as session:
+                db = session.query(Database).filter_by(id=db_id).first()
+                if db:
+                    if db_type:
+                        db.db_type = db_type
+                    if host:
+                        db.host = host
+                    if port:
+                        db.port = port
+                    if user:
+                        db.user = user
+                    if password:
+                        db.password = password
+                    if dbname:
+                        db.dbname = dbname
+                    if alias:
+                        db.alias = alias
+                    session.commit()
+        except Exception as e:
+            raise DatabaseError(None, None, e)
+
+    def delete_database(self, db_id: Optional[int] = None, alias: Optional[str] = None):
+        try:
+
+            with self.Session() as session:
+                if alias:
+                    db = session.query(Database).filter_by(alias=alias).first()
+                elif db_id:
+                    db = session.query(Database).filter_by(id=db_id).first()
+                if db:
+                    session.delete(db)
+                    session.commit()
+        except Exception as e:
+            raise DatabaseError(None, None, e)
+
+    def list_tables(self, db_id: Optional[int] = None, alias: Optional[str] = None):
+        from .tpch.databases.base import Connection  # noqa: F401
+
+        try:
+            with self.Session() as session:
+                if alias:
+                    db = session.query(Database).filter_by(alias=alias).first()
+                elif db_id:
+                    db = session.query(Database).filter_by(id=db_id).first()
+            if not db:
+                raise RuntimeError("Database not found.")
+            if db.db_type not in db_classes:
+                raise ValueError(f"Unsupported database type: {db.db_type}")
+            db_name = db.dbname
+
+            # determine database type and dynamically import connection class
+            dbconn: Connection
+            db_class_path = db_classes[db.db_type]
+            module_path, class_name = db_class_path.rsplit(".", 1)
+            module = import_module(module_path, package="tpch_runner")
+            db_class = getattr(module, class_name)
+
+            dbconn = db_class(
+                host=db.host,
+                port=int(db.port),
+                db_name=db.dbname,
+                user=db.user,
+                password=db.password,
+            )
+
+            if db.db_type == "pg":
+                db_name = "public"
+            stmt = f"SELECT table_name FROM information_schema.tables WHERE table_schema='{db_name}'"  # noqa: E501
+
+            with dbconn as conn:
+                conn.query(stmt)
+                result = conn.fetch()
+
+            return result
+        except Exception as e:
+            raise DatabaseError(None, None, e)
 
 
 class TestResultManager:
@@ -277,7 +441,7 @@ class TestResultManager:
             raise e
 
     def read_result(self, test_id) -> tuple[TestResult, str, pd.DataFrame]:
-        from .base import TPCH_Runner
+        from .tpch.databases.base import TPCH_Runner
 
         query_dir = TPCH_Runner.query_dir
         try:

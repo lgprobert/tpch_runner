@@ -1,10 +1,11 @@
+import logging
 import sys
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Iterable, Optional
 
+from ...meta import TestResultManager, setup_database
 from .. import RESULT_DIR, InternalQueryArgs, Result, all_tables, post_process, timeit
-from .meta import TestResultManager, setup_database
 
 POWER = "power"
 THROUGHPUT = "throughput"
@@ -57,6 +58,8 @@ QUERY_ORDER = [  # follows appendix A of the TPCH-specification
     [13, 15, 17, 1, 22, 11, 3, 4, 7, 20, 14, 21, 9, 8, 2, 18, 16, 6, 10, 12, 5, 19],
 ]
 NUM_QUERIES = len(QUERY_ORDER[0])
+
+logger = logging.getLogger(__name__)
 
 
 class Connection:
@@ -182,18 +185,37 @@ class TPCH_Runner:
             for tbl in all_tables:
                 print()
                 self.load_single_table(tbl)
-            print("\nAll tables finish loading.")
+            print()
+            logger.info("All tables finish loading.")
 
-    @timeit
-    def drop_all(self):
+    def truncate_table(self, table: str = "all"):
         try:
             with self._conn as conn:
-                for tbl in all_tables:
-                    conn.query(f"drop table if exists {tbl}")
+                if table == "all":
+                    for tbl in all_tables:
+                        conn.query(f"truncate table {tbl}")
+                else:
+                    conn.query(f"truncate table {table}")
+                conn.commit()
+        except Exception as e:
+            print(f"Truncate table fails, exception: {e}.", file=sys.stderr)
+            return
+        logger.info(f"Table {table} is truncated.")
+
+    @timeit
+    def drop_table(self, table: str = "all"):
+        try:
+            with self._conn as conn:
+                if table == "all":
+                    for tbl in all_tables:
+                        conn.query(f"drop table if exists {tbl}")
+                else:
+                    conn.query(f"drop table if exists {table}")
+                conn.commit()
         except Exception as e:
             print(f"Drop table fails, exception: {e}.", file=sys.stderr)
             return
-        print("All tables are dropped.")
+        logger.info(f"Table {table} are dropped.")
 
     @post_process
     @timeit
@@ -277,3 +299,6 @@ class TPCH_Runner:
             )
         )
         return results
+
+    def after_load(self):
+        pass

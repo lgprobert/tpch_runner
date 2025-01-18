@@ -8,7 +8,7 @@ from tabulate import tabulate
 
 from tpch_runner.config import app_root
 
-from ..tpch.databases import meta
+from .. import meta
 from . import CONTEXT_SETTINGS, format_datetime
 
 

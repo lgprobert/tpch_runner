@@ -4,7 +4,7 @@ import click
 from rich_click import RichGroup
 from tabulate import tabulate
 
-from ..tpch.databases import meta
+from .. import meta
 from . import CONTEXT_SETTINGS, format_datetime
 
 

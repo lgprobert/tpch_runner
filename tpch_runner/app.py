@@ -4,8 +4,8 @@ from typing import AsyncGenerator
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import StreamingResponse
 
-from . import config
-from .tpch.injection import csv_to_json, generate_data, stream_csv_to_json
+from tpch_runner import config
+from tpch_runner.tpch.injection import csv_to_json, generate_data, stream_csv_to_json
 
 app = FastAPI()
 
@@ -113,7 +113,11 @@ async def get_customer():
     return StreamingResponse(json_generator, media_type="application/json")
 
 
-if __name__ == "__main__":
+def main():
     import uvicorn
 
     uvicorn.run(app, host="0.0.0.0", port=8000)
+
+
+if __name__ == "__main__":
+    main()
