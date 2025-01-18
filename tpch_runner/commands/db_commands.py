@@ -1,5 +1,4 @@
 import sys
-from typing import Optional, Type
 
 import click
 from rich_click import RichGroup
@@ -9,51 +8,7 @@ from .. import meta
 from ..tpch import all_tables
 from ..tpch.databases import base
 from . import CONTEXT_SETTINGS
-
-
-def get_db(
-    rm: meta.DBManager, id: Optional[int] = None, alias_: Optional[str] = None
-) -> meta.Database:
-    if not id and not alias_:
-        click.echo("Either database ID or alias is required.")
-        sys.exit(1)
-    db: meta.Database = rm.get_databases(id=id, alias=alias_)[0]
-    if not db:
-        click.echo(f"Database {id} or alias {alias_} not found.")
-        sys.exit(1)
-    elif db.db_type not in meta.db_classes:
-        click.echo(f"Unsupported database type: {db.db_type}")
-        sys.exit(1)
-    return db
-
-
-def get_db_manager(db: meta.Database, scale: str = "small") -> base.TPCH_Runner:
-    conn_class: Type[base.Connection]
-    db_class: Type[base.TPCH_Runner]
-    if db.db_type == "mysql":
-        from ..tpch.databases.mysqldb import MySQL_TPCH, MySQLDB
-
-        db_class = MySQL_TPCH
-        conn_class = MySQLDB
-    elif db.db_type == "pg":
-        from ..tpch.databases.pgdb import PG_TPCH, PGDB
-
-        db_class = PG_TPCH
-        conn_class = PGDB
-    else:
-        raise ValueError(f"Unsupported database type: {db.db_type}")
-
-    dbconn = conn_class(
-        host=db.host,
-        port=int(db.port),
-        db_name=db.dbname,
-        user=db.user,
-        password=db.password,
-    )
-    db_manager: base.TPCH_Runner = db_class(
-        dbconn, db_id=db.id, scale=scale  # type: ignore
-    )
-    return db_manager
+from .utils import get_db, get_db_manager
 
 
 @click.group(

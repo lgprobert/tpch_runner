@@ -5,7 +5,7 @@ from tabulate import tabulate
 from .. import meta
 from ..tpch.databases import base
 from . import CONTEXT_SETTINGS
-from .db_commands import get_db, get_db_manager
+from .utils import get_db, get_db_manager
 
 
 @click.group(

@@ -5,7 +5,8 @@ from rich_click import RichGroup
 from tabulate import tabulate
 
 from .. import meta
-from . import CONTEXT_SETTINGS, format_datetime
+from . import CONTEXT_SETTINGS
+from .utils import format_datetime
 
 
 @click.group(

@@ -2,14 +2,14 @@ from pathlib import Path
 from typing import Any, Optional
 
 import click
-import matplotlib.pyplot as plt
 from rich_click import RichGroup
 from tabulate import tabulate
 
 from tpch_runner.config import app_root
 
 from .. import meta
-from . import CONTEXT_SETTINGS, format_datetime
+from . import CONTEXT_SETTINGS
+from .utils import barchart, barchart2, format_datetime, linechart, linechart2
 
 
 @click.group(
@@ -240,51 +240,55 @@ def show(ctx, test_id: int):
     help="Chart type",
 )
 @click.argument("test_id")
+@click.argument("ref_test_id")
 @click.pass_obj
-def draw(ctx, test_id: int, chart: str) -> None:
+def draw(ctx, test_id: int, ref_test_id: int, chart: str) -> None:
     """Generate Powertest runtime chart.
 
     TEST_ID: ID of the test to show.
+    REF_TEST_ID: ID of the reference test to compare with (optional).
     """
     rm: meta.TestResultManager = ctx["rm"]
+    compare: bool = False
+
+    chart_functions = {
+        "bar": (barchart, barchart2),
+        "line": (linechart, linechart2),
+    }
+
+    single_chart_func, compare_chart_func = chart_functions[chart]
+
+    if chart not in chart_functions:
+        raise ValueError(f"Unsupported chart type: {chart}")
 
     try:
         db, test_name, total_runtime, query_runtimes = rm.get_powertest_runtime(test_id)
         chart_file_path = Path(app_root).joinpath(f"{test_name}.png").expanduser()
-        queries = [f"Q{i}" for i in range(1, 23)]
+        if ref_test_id:
+            compare = True
+            ref_db, ref_test_name, _, ref_query_runtimes = rm.get_powertest_runtime(
+                ref_test_id
+            )
+            print(f"Comparing {test_name} with {ref_test_name}")
+            chart_file_path = (
+                Path(app_root)
+                .joinpath(f"{test_name}-{ref_test_name}_{chart}chart.png")
+                .expanduser()
+            )
 
-        if chart == "bar":
-            barchart(db, queries, query_runtimes, chart_file_path)
-        else:
-            linechart(db, queries, query_runtimes, chart_file_path)
-        print(f"Chart saved to {chart_file_path}")
+        queries = [f"Q{i}" for i in range(1, 23)]
     except Exception as e:
         click.echo(f"Fails to retrieve Powertest {test_id} record.\nException: {e}")
         return
 
-
-def barchart(title, labels, data, fpath):
-    plt.figure(figsize=(12, 6))
-    plt.bar(labels, data, color="skyblue")
-
-    plt.title(f"{title} TPC-H Queries Runtime", fontsize=16)
-    plt.xlabel("Query", fontsize=14)
-    plt.ylabel("Runtime (seconds)", fontsize=14)
-    plt.xticks(rotation=45)
-    plt.tight_layout()
-    plt.savefig(fpath, dpi=300)
-
-
-def linechart(title, labels, data, fpath):
-    plt.figure(figsize=(12, 6))
-    plt.plot(labels, data, marker="o", linestyle="-", color="blue")
-
-    plt.title(f"{title} TPC-H Queries Runtime", fontsize=16)
-    plt.xlabel("Query", fontsize=14)
-    plt.ylabel("Runtime (seconds)", fontsize=14)
-    plt.xticks(rotation=45)
-    plt.grid(True)
-    plt.savefig(fpath, dpi=300)
+    # generate chart
+    if compare:
+        compare_chart_func(
+            db, ref_db, queries, query_runtimes, ref_query_runtimes, str(chart_file_path)
+        )
+    else:
+        single_chart_func(db, queries, query_runtimes, chart_file_path)
+    print(f"Chart saved to {chart_file_path}")
 
 
 if __name__ == "__main__":
