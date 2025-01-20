@@ -1,11 +1,18 @@
 import logging
 import sys
-from datetime import datetime
 from pathlib import Path
 from typing import Any, Iterable, Optional
 
 from ...meta import TestResultManager, setup_database
-from .. import RESULT_DIR, InternalQueryArgs, Result, all_tables, post_process, timeit
+from .. import (
+    DATA_DIR,
+    RESULT_DIR,
+    InternalQueryArgs,
+    Result,
+    all_tables,
+    post_process,
+    timeit,
+)
 
 POWER = "power"
 THROUGHPUT = "throughput"
@@ -173,19 +180,24 @@ class TPCH_Runner:
     def create_tables(self):
         pass
 
-    def load_single_table(self, table: str, line_terminator: Optional[str] = None):
+    def load_single_table(
+        self,
+        table: str,
+        line_terminator: Optional[str] = None,
+        data_folder: str = str(DATA_DIR),
+    ):
         pass
 
     @timeit
-    def load_data(self, table: str = "all"):
+    def load_data(self, table: str = "all", data_folder: str = str(DATA_DIR)):
         if table != "all" and table not in all_tables:
             raise ValueError(f"Invalid table name {table}.")
         elif table != "all":
-            self.load_single_table(table)
+            self.load_single_table(table, data_folder=data_folder)
         else:
             for tbl in all_tables:
                 print()
-                self.load_single_table(tbl)
+                self.load_single_table(tbl, data_folder=data_folder)
             print()
             logger.info("All tables finish loading.")
 
@@ -266,21 +278,18 @@ class TPCH_Runner:
         results = {}
         total_time = 0
         success = True
-        test_time = datetime.now()
-        test_timestamp = test_time.strftime("%Y%m%d_%H%M%S")
-        result_dir = RESULT_DIR.joinpath(f"{self.db_type}_{test_timestamp}")
 
-        print(f"\nPower test start at {test_time.strftime('%Y-%m-%d %H:%M:%S')}")
         if not no_report:
-            print("Test result will be saved in:", result_dir)
-            result_dir.mkdir(exist_ok=True)
-            self.meta.add_powertest(
-                testtime=test_time,
-                result_folder=str(result_dir.stem),
+            test_time, result_folder = self.meta.add_powertest(
+                db_id=self.db_id,
                 db_type=self.db_type,
                 scale=self.scale,
-                db_id=self.db_id,
             )
+            result_dir = RESULT_DIR.joinpath(result_folder)
+            logger.info("Test result will be saved in:", result_dir)
+            result_dir.mkdir(exist_ok=True)
+            print()
+        logger.info(f"Power test start at {test_time.strftime('%Y-%m-%d %H:%M:%S')}")
 
         result: Result
         for _query_idx in QUERY_ORDER[0]:
@@ -296,8 +305,9 @@ class TPCH_Runner:
                 result_folder=str(result_dir.stem), success=success, runtime=total_time
             )
 
-        print(
-            "\nPowertest is finished, test result: {}, total time: {} secs.".format(
+        print()
+        logger.info(
+            "Powertest is finished, test result: {}, total time: {} secs.".format(
                 "Succeed" if success else "Fail", round(total_time, 6)
             )
         )

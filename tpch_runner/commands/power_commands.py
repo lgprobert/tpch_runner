@@ -1,3 +1,5 @@
+import os
+import sys
 from pathlib import Path
 from typing import Any, Optional
 
@@ -101,6 +103,26 @@ def update(ctx, test_id: int, comment: Optional[str] = None, scale: Optional[str
     except Exception as e:
         click.echo(f"Fails to update Powertest result {test_id}.\nException: {e}")
         return
+
+
+@cli.command("validate")
+@click.argument("test_id")
+@click.pass_obj
+def validate(ctx, test_id: int) -> None:
+    """Validate a Powertest record.
+
+    TEST_ID: ID of the test to validate.
+    """
+    rm: meta.TestResultManager = ctx["rm"]
+
+    try:
+        ok, result_folder = rm.compare_powertest(test_id)
+        if not ok:
+            sys.exit(1)
+        print(f"\nPowertest {result_folder} (ID: {test_id}) result is good.")
+    except Exception as e:
+        click.echo(f"Validation failed for Powertest result {test_id}.\nException: {e}")
+        os._exit(1)
 
 
 @cli.command("compare")

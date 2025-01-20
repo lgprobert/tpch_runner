@@ -64,24 +64,24 @@ class PG_TPCH(base.TPCH_Runner):
         print("TPC-H tables are created.")
 
     @timeit
-    def load_single_table(self, table: str):
+    def load_single_table(self, table: str, data_folder: str = str(DATA_DIR)):
         """Load test data into TPC-H tables."""
         try:
             with self._conn as conn:
-                conn.copyFrom(f"{DATA_DIR}/{table}.csv", ",", table)
+                conn.copyFrom(Path(data_folder).joinpath(f"{table}.csv"), ",", table)
                 conn.commit()
         except Exception as e:
             print(f"Load data fails, exception: {e}", file=sys.stderr)
 
     @timeit
-    def load_data(self, table: str = "all"):
+    def load_data(self, table: str = "all", data_folder: str = str(DATA_DIR)):
         if table != "all" and table not in all_tables:
             raise ValueError(f"Invalid table name {table}.")
         elif table != "all":
-            self.load_single_table(table)
+            self.load_single_table(table, data_folder=data_folder)
         else:
             for tbl in all_tables:
-                self.load_single_table(tbl)
+                self.load_single_table(tbl, data_folder=data_folder)
             print("All tables finish loading.")
 
     @timeit

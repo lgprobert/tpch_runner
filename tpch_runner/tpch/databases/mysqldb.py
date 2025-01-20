@@ -70,9 +70,14 @@ class MySQL_TPCH(base.TPCH_Runner):
             print("TPC-H tables are created.")
 
     @timeit
-    def load_single_table(self, table: str, line_terminator: Optional[str] = None):
+    def load_single_table(
+        self,
+        table: str,
+        line_terminator: Optional[str] = None,
+        data_folder: str = str(DATA_DIR),
+    ):
         """Load test data into TPC-H tables."""
-        data_file = f"{DATA_DIR}/{table}.csv"
+        data_file = Path(data_folder).joinpath(f"{table}.csv")
         delimiter = ","
         load_command = f"""
             load data local infile '{data_file}' into table {table}

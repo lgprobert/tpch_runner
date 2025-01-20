@@ -1,5 +1,5 @@
 from . import timeit
-from .injection import data_gen_batch, table_map
+from .injection import TABLE_MAP, data_gen_batch
 
 
 class DataGen:
@@ -9,10 +9,10 @@ class DataGen:
 
     @timeit
     def generate(self, table: str):
-        table_code = table_map.get(table)
+        table_code = TABLE_MAP.get(table)
         data_gen_batch(table_code, self.scale_factor)  # type: ignore
 
     @timeit
     def gen_all(self):
-        for tbl in table_map.keys():
+        for tbl in TABLE_MAP.keys():
             self.generate(tbl)

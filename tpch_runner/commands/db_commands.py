@@ -5,7 +5,7 @@ from rich_click import RichGroup
 from tabulate import tabulate
 
 from .. import meta
-from ..tpch import all_tables
+from ..tpch import DATA_DIR, all_tables
 from ..tpch.databases import base
 from . import CONTEXT_SETTINGS
 from .utils import get_db, get_db_manager
@@ -171,8 +171,9 @@ def create(ctx, db_id, alias) -> None:
     default=None,
     help="Table name",
 )
+@click.option("-p", "--path", "data_folder", default=str(DATA_DIR), help="Data folder")
 @click.pass_obj
-def load(ctx, db_id, alias, table) -> None:
+def load(ctx, db_id, alias, table, data_folder) -> None:
     """Load specified table or all tables.
 
     DB_ID: database ID
@@ -182,9 +183,9 @@ def load(ctx, db_id, alias, table) -> None:
     db_manager: base.TPCH_Runner = get_db_manager(db)
 
     if table:
-        db_manager.load_single_table(table)
+        db_manager.load_single_table(table, data_folder=data_folder)
     else:
-        db_manager.load_data()
+        db_manager.load_data(data_folder=data_folder)
 
 
 @cli.command("reload")

@@ -1,5 +1,6 @@
 import logging
 import shutil
+import time
 from datetime import datetime
 from importlib import import_module
 from pathlib import Path
@@ -10,12 +11,12 @@ from sqlalchemy import (
     Boolean,
     Column,
     DateTime,
+    Engine,
     Float,
     ForeignKey,
     Integer,
     String,
     create_engine,
-    event,
 )
 from sqlalchemy.exc import DatabaseError
 from sqlalchemy.ext.declarative import declarative_base
@@ -38,6 +39,7 @@ db_classes = {
 
 class Database(Base):  # type: ignore
     __tablename__ = "databases"
+    __table_args__ = {"sqlite_autoincrement": True}
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     db_type = Column(String, nullable=False)
@@ -55,6 +57,7 @@ class Database(Base):  # type: ignore
 
 class TestResult(Base):  # type: ignore
     __tablename__ = "results"
+    __table_args__ = {"sqlite_autoincrement": True}
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     testtime = Column(DateTime, default=datetime.utcnow, nullable=False)
@@ -74,6 +77,7 @@ class TestResult(Base):  # type: ignore
 
 class PowerTest(Base):  # type: ignore
     __tablename__ = "powertests"
+    __table_args__ = {"sqlite_autoincrement": True}
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     db_type = Column(String, nullable=False)
@@ -247,36 +251,48 @@ class DBManager:
 
 
 class TestResultManager:
-    def __init__(self, engine):
+    def __init__(self, engine: Engine):
         self.Session = sessionmaker(bind=engine)
+        self._conn = engine.connect()
 
-        @event.listens_for(engine, "connect")
-        def set_foreign_keys_on(dbapi_connection, connection_record):
-            dbapi_connection.execute("PRAGMA foreign_keys = ON;")
+    @staticmethod
+    def _generate_result_folder(db_type: str, time_value: datetime) -> str:
+        current_time = time_value.strftime("%Y%m%d_%H%M%S")
+        return f"{db_type}_{current_time}"
 
     def add_powertest(
         self,
         db_id: int,
-        testtime: datetime,
-        result_folder: str,
         db_type: str,
         scale: str = "small",
-    ):
-        try:
-            with self.Session() as session:
-                session.add(
-                    PowerTest(
-                        testtime=testtime,
-                        result_folder=result_folder,
-                        db_type=db_type,
-                        scale=scale,
-                        database_id=db_id,
+    ) -> tuple[datetime, str]:
+        attempt = 0
+        max_attempts = 3
+        while attempt < max_attempts:
+            try:
+                test_time = datetime.now()
+                result_folder = self._generate_result_folder(db_type, test_time)
+
+                with self.Session() as session:
+                    session.add(
+                        PowerTest(
+                            testtime=test_time,
+                            result_folder=result_folder,
+                            db_type=db_type,
+                            scale=scale,
+                            database_id=db_id,
+                        )
                     )
-                )
-                session.commit()
-            logger.info(f"PowerTest added: {result_folder}")
-        except Exception as e:
-            raise DatabaseError(None, None, e)
+                    session.commit()
+                logger.info(f"PowerTest added: {result_folder}")
+            except Exception as e:
+                self._conn.rollback()
+                attempt += 1
+                if attempt >= max_attempts:
+                    print("Max attempts reached. Could not insert the record.")
+                    raise DatabaseError(None, None, e)
+                time.sleep(1)
+        return test_time, result_folder
 
     def update_powertest(
         self,
@@ -304,8 +320,8 @@ class TestResultManager:
                 if power_test is None:
                     raise ValueError(f"PowerTest {result_folder} not found.")
 
-                power_test.success = success
-                power_test.runtime = runtime
+                power_test.success = success  # type: ignore
+                power_test.runtime = runtime  # type: ignore
 
                 session.commit()
 
@@ -326,8 +342,8 @@ class TestResultManager:
                 if power_test is None:
                     raise ValueError(f"PowerTest {test_id} not found.")
 
-                power_test.comment = comment
-                power_test.scale = scale
+                power_test.comment = comment  # type: ignore
+                power_test.scale = scale  # type: ignore
 
                 session.commit()
 
@@ -359,7 +375,7 @@ class TestResultManager:
                 query = session.query(PowerTest)
                 if id:
                     query = query.filter(PowerTest.id == id)
-                    result_folder = query.one().result_folder
+                    result_folder = query.one().result_folder  # type: ignore
                     query = query.filter(PowerTest.result_folder == result_folder)
 
                 if not result_folder:
@@ -379,33 +395,44 @@ class TestResultManager:
         except Exception as e:
             raise e
 
-    def compare_powertest(self, testid: int):
+    def compare_powertest(self, testid: int) -> tuple[bool, str]:
+        all_pass: bool = True
         with self.Session() as session:
             power_test = session.query(PowerTest).filter_by(id=testid).first()
-            pt_folder: str = power_test.result_folder
+            if power_test is None:
+                raise ValueError(f"PowerTest {testid} not found.")
+            pt_folder: str = power_test.result_folder  # type: ignore
 
             result = Result(
-                db_type=power_test.db_type,
+                db_type=power_test.db_type,  # type: ignore
                 result_dir=pt_folder,
-                scale=power_test.scale,
+                scale=power_test.scale,  # type: ignore
             )
             for i in range(1, 22):
                 result_file = f"{i}.csv"
-                logger.info(
-                    f"Compare {result_file}: {result.compare_against_answer(result_file)}"
-                )
+                ok = result.compare_against_answer(result_file)
+                if not ok and all_pass:
+                    all_pass = False
+                    logger.error(
+                        f"Query {i} result is not matched against answer. Test failed."
+                    )
+                else:
+                    logger.info(f"Compare {result_file}: Good.")
+            return all_pass, pt_folder
 
     def get_powertest_runtime(self, test_id: int) -> tuple[str, str, float, list[float]]:
         query_runtime: list[float] = []
         with self.Session() as session:
             query = session.query(PowerTest).options(joinedload(PowerTest.results))
             result = query.filter(PowerTest.id == test_id).first()
+            if result is None:
+                raise ValueError(f"PowerTest {test_id} not found.")
             total_runtime = result.runtime
             db_type = result.db_type
             test_name = result.result_folder
             for record in result.results:
                 query_runtime.append(record.runtime)
-        return db_type, test_name, total_runtime, query_runtime
+        return db_type, test_name, total_runtime, query_runtime  # type: ignore
 
     def add_test_result(
         self,
