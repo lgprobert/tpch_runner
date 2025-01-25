@@ -12,6 +12,10 @@
     ],
     "python.defaultInterpreterPath": "~/projects/venv/bin/python",
     "editor.formatOnSave": true,
+    "python.analysis.extraPaths": [
+        "~/projects/pyrdp",
+        "~/projects/pydbgen"
+    ],
     "python.testing.unittestArgs": [
         "-v",
         "-s",

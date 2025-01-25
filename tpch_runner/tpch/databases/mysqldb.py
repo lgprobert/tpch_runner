@@ -1,3 +1,5 @@
+"""Module for MySQL database TPC-H benchmark runner."""
+
 import sys
 from pathlib import Path
 from typing import Optional
@@ -11,14 +13,14 @@ SHEMA_DIR = Path(__file__).parents[1].joinpath("schema/mysql")
 
 
 class MySQLDB(base.Connection):
-    """Class for DBAPI connections to MySobjectQL database"""
+    """Class for DBAPI connections to MySQL database"""
 
     def __init__(self, host, port, db_name, user, password, **kwargs):
         super().__init__(host, port, db_name, user, password)
         self.kwargs = kwargs
 
     def open(self):
-        """Overload base connection open() with PG driver."""
+        """Overload base connection open() with MySQL driver."""
         if self.__connection__ is None:
             self.__connection__ = pymysql.connect(
                 host=self.host,

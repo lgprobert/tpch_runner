@@ -105,6 +105,18 @@ class Connection:
         """Context manager exit point."""
         self.close()
 
+    @staticmethod
+    def normalize_query(filepath: str) -> str:
+        with open(filepath) as query_file:
+            content = query_file.readlines()
+
+        content = [
+            line for line in content if line.strip() and not line.strip().startswith("--")
+        ]
+        _text = " ".join(content)
+        _text = _text.replace("\n", " ").replace("\t", " ")
+        return _text
+
     def query(self, query: str) -> int:
         """Execute a query from connection cursor."""
         if self.__cursor__:
@@ -132,31 +144,27 @@ class Connection:
         rowcount = 0
         rset = None
         columns = None
-        with open(filepath) as query_file:
-            content = query_file.readlines()
-            content = [
-                line
-                for line in content
-                if line.strip() and not line.strip().startswith("--")
-            ]
-            sql_script = " ".join(content)
-            statements = sql_script.split(";")
-            statements = [stmt.strip() for stmt in statements if stmt.strip()]
 
-            try:
-                for stmt in statements:
-                    if stmt.lower().startswith("select"):
-                        self.__cursor__.execute(stmt)
-                        rowcount = self.__cursor__.rowcount
-                        rset = self.__cursor__.fetchall()
-                        columns = [desc[0] for desc in self.__cursor__.description]
-                    elif stmt.startswith("--"):
-                        pass
-                    else:
-                        self.__cursor__.execute(stmt)
+        if filepath:
+            sql_script = self.normalize_query(filepath)
 
-            except Exception as e:
-                raise RuntimeError("Statement {} fails, exception: {}".format(stmt, e))
+        statements = sql_script.split(";")
+        statements = [stmt.strip() for stmt in statements if stmt.strip()]
+
+        try:
+            for stmt in statements:
+                if stmt.lower().startswith("select"):
+                    self.__cursor__.execute(stmt)
+                    rowcount = self.__cursor__.rowcount
+                    rset = self.__cursor__.fetchall()
+                    columns = [desc[0] for desc in self.__cursor__.description]
+                elif stmt.startswith("--"):
+                    pass
+                else:
+                    self.__cursor__.execute(stmt)
+
+        except Exception as e:
+            raise RuntimeError("Statement {} fails, exception: {}".format(stmt, e))
         return rowcount, rset, columns
 
     def commit(self) -> bool:

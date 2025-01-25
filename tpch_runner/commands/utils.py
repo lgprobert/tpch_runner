@@ -122,6 +122,37 @@ def linechart(title, labels, data, fpath):
     plt.savefig(fpath, dpi=300)
 
 
+def linechart_multi(
+    title: str, labels: list[str], trends: list[dict], fpath: str
+) -> None:
+    """
+    Generate a line chart to visualize TPC-H query runtime trends.
+
+    Parameters:
+    - title (str): The title of the chart.
+    - labels (list[str]): The labels for the x-axis.
+    - trends (list[dict]): A list of dictionaries, each containing:
+        - 'name': A string representing the trend name.
+        - 'data': A list of y-axis values corresponding to labels.
+    - fpath (str): The file path to save the generated chart.
+
+    Returns:
+    None
+    """
+    plt.figure(figsize=(12, 6))
+    for trend in trends:
+        name = trend.get("name", None)
+        data = trend.get("data", [])
+        plt.plot(labels, data, marker="o", linestyle="-", label=name)
+
+    plt.title(f"{title} TPC-H Queries Runtime", fontsize=16)
+    plt.xlabel("Query", fontsize=14)
+    plt.ylabel("Runtime (seconds)", fontsize=14)
+    plt.xticks(rotation=45)
+    plt.grid(True)
+    plt.savefig(fpath, dpi=300)
+
+
 def linechart2(
     d1_label,
     d2_label,

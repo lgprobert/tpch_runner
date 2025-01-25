@@ -1,3 +1,5 @@
+"""Module for PostgreSQL database TPC-H benchmark runner."""
+
 import sys
 from pathlib import Path
 

@@ -2,5 +2,5 @@
 disable_error_code = ["import-untyped"]
 
 [[tool.mypy.overrides]]
-module = ["tpch_runner.*"]
+module = ["tpch_runner.*", "pyRDP.*"]
 ignore_missing_imports = true
