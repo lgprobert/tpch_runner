@@ -5,7 +5,7 @@ from rich_click import RichGroup
 from tabulate import tabulate
 
 from .. import meta
-from ..tpch import DATA_DIR, all_tables
+from ..tpch import DATA_DIR, all_tables, supported_databases
 from ..tpch.databases import base
 from . import CONTEXT_SETTINGS
 from .utils import get_db, get_db_manager
@@ -55,7 +55,7 @@ def ls(ctx) -> None:
     "-t",
     "--type",
     "db_type",
-    type=click.Choice(["mysql", "pg"]),
+    type=click.Choice(supported_databases),
     default="mysql",
     help="DB type",
 )
@@ -99,7 +99,7 @@ def delete(ctx, db_id, _alias) -> None:
     "-t",
     "--type",
     "db_type",
-    type=click.Choice(["mysql", "pg"]),
+    type=click.Choice(supported_databases),
     default="mysql",
     help="DB type",
 )

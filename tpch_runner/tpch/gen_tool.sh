@@ -1,10 +1,10 @@
 #!/bin/bash
 # shellcheck disable=SC2034
 
-DSS_PATH='data'
-DSS_CONFIG='tool'
-DSS_DIST='dists.dss'
-DSS_QUERY='templates'
+export DSS_PATH='data'
+export DSS_CONFIG='tool'
+export DSS_DIST='dists.dss'
+export DSS_QUERY='templates'
 action=dbgen
 
 all_tables=("region" "nation" "customer" "part" "supplier" "partsupp" "orders" "lineitem")
@@ -20,13 +20,15 @@ err_exit() {
 }
 
 query_generator() {
-    echo -e "Generating queries for scale factor $SCALE_FACTOR"
+
     if (( QUERY == -1 )); then
+        echo -e "Generating queries for scale factor $SCALE_FACTOR"
         for i in {1..22}; do
             tool/qgen -d -s "$SCALE_FACTOR" "$i" > queries/q"$i".sql
         done
     else
-        tool/qgen -d -s "$SCALE_FACTOR" "$QUERY" > tmp.sql
+        echo -e "Generating query $QUERY for scale factor $SCALE_FACTOR"
+        tool/qgen -d -s "$SCALE_FACTOR" "$QUERY" > queries/q"$QUERY".sql
     fi
 }
 
@@ -53,7 +55,7 @@ do
     case $option in
         s)
             if [[ "$OPTARG" =~ ^-?[0-9]+$ ]]; then
-                SCALE_FACTOR=$option
+                SCALE_FACTOR="$OPTARG"
             else
                 err_exit "-s requires a number"
             fi
@@ -78,11 +80,12 @@ do
             ;;
         h)
             usage
+            exit 0
             ;;
         *)
             usage
             echo
-            err_exit "Invalid option: -$OPTARG" >
+            err_exit "Invalid option: -$OPTARG"
             ;;
     esac
 done

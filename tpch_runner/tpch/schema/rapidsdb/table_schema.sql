@@ -1,4 +1,4 @@
-create table moxe.SUPPLIER (
+create table supplier (
    s_suppkey integer not null,
    s_name varchar(25) not null,
    s_address varchar(40) not null,
@@ -8,7 +8,7 @@ create table moxe.SUPPLIER (
    s_comment varchar(101) not null
 ) PARTITION (s_suppkey);
 
-create table moxe.PART (
+create table part (
    p_partkey integer not null,
    p_name varchar(55) not null,
    p_mfgr varchar(25) not null,
@@ -20,7 +20,7 @@ create table moxe.PART (
    p_comment varchar(23) not null
 ) PARTITION (p_partkey);
 
-create table moxe.PARTSUPP (
+create table partsupp (
    ps_partkey integer not null,
    ps_suppkey integer not null,
    ps_availqty integer not null,
@@ -28,7 +28,7 @@ create table moxe.PARTSUPP (
    ps_comment varchar(199) not null
 ) PARTITION (ps_partkey);
 
-create table moxe.CUSTOMER (
+create table customer (
    c_custkey integer not null,
    c_name varchar(25) not null,
    c_address varchar(40) not null,
@@ -39,7 +39,7 @@ create table moxe.CUSTOMER (
    c_comment varchar(117)
 ) PARTITION (c_custkey);
 
-create table moxe.ORDERS (
+create table orders (
    o_orderkey integer not null,
    o_custkey integer not null,
    o_orderstatus varchar(1) not null,
@@ -51,7 +51,7 @@ create table moxe.ORDERS (
    o_comment varchar(79) not null
 ) PARTITION (o_orderkey);
 
-create table moxe.LINEITEM (
+create table lineitem (
    l_orderkey integer not null,
    l_partkey integer not null,
    l_suppkey integer not null,
@@ -70,14 +70,14 @@ create table moxe.LINEITEM (
    l_comment varchar(44) not null
 ) PARTITION (l_orderkey);
 
-create table moxe.NATION (
+create table nation (
    n_nationkey integer not null,
    n_name varchar(25) not null,
    n_regionkey integer not null,
    n_comment varchar(152)
 );
 
-create table moxe.REGION (
+create table region (
    r_regionkey integer not null,
    r_name varchar(25) not null,
    r_comment varchar(152)

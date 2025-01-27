@@ -10,6 +10,7 @@ from tabulate import tabulate
 from tpch_runner.config import app_root
 
 from .. import meta
+from ..tpch import supported_databases
 from . import CONTEXT_SETTINGS
 from .utils import barchart, barchart2, format_datetime, linechart, linechart2
 
@@ -32,7 +33,7 @@ def cli(ctx: click.Context):
     "-t",
     "--type",
     "type_",
-    type=click.Choice(["mysql", "pg"]),
+    type=click.Choice(supported_databases),
     default=None,
     help="DB type",
 )

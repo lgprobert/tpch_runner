@@ -3,10 +3,13 @@ import sys
 from pathlib import Path
 from typing import Any, Iterable, Optional
 
+import sqlglot
+
 from ...meta import TestResultManager, setup_database
 from .. import (
     DATA_DIR,
     RESULT_DIR,
+    SCHEMA_BASE,
     InternalQueryArgs,
     Result,
     all_tables,
@@ -106,7 +109,7 @@ class Connection:
         self.close()
 
     @staticmethod
-    def normalize_query(filepath: str) -> str:
+    def read_sql(filepath: str) -> str:
         with open(filepath) as query_file:
             content = query_file.readlines()
 
@@ -116,6 +119,23 @@ class Connection:
         _text = " ".join(content)
         _text = _text.replace("\n", " ").replace("\t", " ")
         return _text
+
+    def normalize_query(self, query: str) -> str:
+        parsed = sqlglot.parse_one(query)
+
+        # Function to prepend schema name to table names
+        def prepend_schema(node, schema):
+            if isinstance(node, sqlglot.expressions.Table):
+                # Prepend schema name to table names
+                node.args["db"] = schema
+            return node
+
+        # Transform the AST
+        transformed = parsed.transform(prepend_schema, schema=self.db_name)
+
+        # Generate the transformed SQL query
+        transformed_query = transformed.sql()
+        return transformed_query
 
     def query(self, query: str) -> int:
         """Execute a query from connection cursor."""
@@ -146,10 +166,16 @@ class Connection:
         columns = None
 
         if filepath:
-            sql_script = self.normalize_query(filepath)
+            sql_script = self.read_sql(filepath)
 
-        statements = sql_script.split(";")
-        statements = [stmt.strip() for stmt in statements if stmt.strip()]
+        raw_statements = sql_script.split(";")
+        statements = [stmt.strip() for stmt in raw_statements if stmt.strip()]
+
+        # statements = []
+        # for stmt in raw_statements:
+        #     if stmt.strip():
+        #         stmt = self.normalize_query(stmt)
+        #         statements.append(stmt + ";")
 
         try:
             for stmt in statements:
@@ -158,10 +184,11 @@ class Connection:
                     rowcount = self.__cursor__.rowcount
                     rset = self.__cursor__.fetchall()
                     columns = [desc[0] for desc in self.__cursor__.description]
-                elif stmt.startswith("--"):
-                    pass
                 else:
-                    self.__cursor__.execute(stmt)
+                    rowcount = self.__cursor__.execute(stmt)
+                    if rowcount and rowcount > 0:
+                        rset = self.__cursor__.fetchall()
+                        columns = [desc[0] for desc in self.__cursor__.description]
 
         except Exception as e:
             raise RuntimeError("Statement {} fails, exception: {}".format(stmt, e))
@@ -178,6 +205,7 @@ class Connection:
 class TPCH_Runner:
     db_type = ""
     query_dir = Path(__file__).parents[1].joinpath("queries")
+    schema_dir = SCHEMA_BASE.joinpath("schema").joinpath(db_type)
 
     def __init__(self, connection: Connection, db_id: int, scale: str = "small"):
         self._conn = connection
@@ -265,9 +293,12 @@ class TPCH_Runner:
         )
         try:
             with self._conn as conn:
-                rowcount, rset, columns = conn.query_from_file(
-                    f"{self.query_dir}/{query_index}.sql"
-                )
+                custom_query_folder = self.schema_dir.joinpath("queries")
+                if not custom_query_folder.joinpath(f"q{query_index}.sql").exists():
+                    query_file = f"{self.query_dir}/q{query_index}.sql"
+                else:
+                    query_file = f"{custom_query_folder}/q{query_index}.sql"
+                rowcount, rset, columns = conn.query_from_file(query_file)
                 print(f"\nQ{query_index} succeeds, return {rowcount} rows.")
             result = Result(
                 success=True,

@@ -4,3 +4,4 @@ max_lag_time = 1
 lag_interval = 0.1
 precision = 0.0001
 app_root = "~/data/tpch_runner"
+data_dir = "~/data/tpch/small"  # unset to use package builtin small dataset

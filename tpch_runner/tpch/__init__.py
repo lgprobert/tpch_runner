@@ -8,7 +8,7 @@ from typing import Any, NamedTuple, Optional
 
 import pandas as pd
 
-from tpch_runner.config import app_root
+from .. import config
 
 Result = namedtuple(
     "Result",
@@ -36,13 +36,16 @@ class InternalQueryArgs(NamedTuple):
     db_id: int
 
 
-DATA_DIR = Path("~/data/tpch/small").expanduser()
-RESULT_DIR = Path(app_root).expanduser().joinpath("results")
+DATA_DIR = Path(config.data_dir).expanduser() or Path(__file__).parent.joinpath("data")
+RESULT_DIR = Path(config.app_root).expanduser().joinpath("results")
 ANSWER_DIR = Path(__file__).parent.joinpath("answer")
+SCHEMA_BASE = Path(__file__).parent.joinpath("schema")
 
-DATA_DIR.mkdir(exist_ok=True)
+if DATA_DIR != Path("data"):
+    DATA_DIR.mkdir(exist_ok=True)
 RESULT_DIR.mkdir(exist_ok=True)
 
+supported_databases = ["mysql", "pg", "rapidsdb"]
 
 all_tables = [
     "region",

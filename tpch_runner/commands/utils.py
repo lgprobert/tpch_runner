@@ -47,6 +47,11 @@ def get_db_manager(db: meta.Database, scale: str = "small") -> base.TPCH_Runner:
 
         db_class = PG_TPCH
         conn_class = PGDB
+    elif db.db_type == "rapidsdb":
+        from ..tpch.databases.rapidsdb import RDP_TPCH, RapidsDB
+
+        db_class = RDP_TPCH
+        conn_class = RapidsDB
     else:
         raise ValueError(f"Unsupported database type: {db.db_type}")
 

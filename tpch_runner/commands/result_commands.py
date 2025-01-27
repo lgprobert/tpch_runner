@@ -5,6 +5,7 @@ from rich_click import RichGroup
 from tabulate import tabulate
 
 from .. import meta
+from ..tpch import supported_databases
 from . import CONTEXT_SETTINGS
 from .utils import format_datetime
 
@@ -27,7 +28,7 @@ def cli(ctx: click.Context):
     "-t",
     "--type",
     "type_",
-    type=click.Choice(["mysql", "pg"]),
+    type=click.Choice(supported_databases),
     default=None,
     help="DB type",
 )

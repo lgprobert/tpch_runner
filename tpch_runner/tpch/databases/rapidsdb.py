@@ -6,10 +6,9 @@ from typing import Iterable, Optional, Union
 
 from pyRDP import pyrdp
 
-from .. import DATA_DIR, all_tables, timeit
+from .. import DATA_DIR, SCHEMA_BASE, timeit
 from . import base
-
-SHEMA_DIR = Path(__file__).parents[1].joinpath("schema/rdp")
+from .parser import add_schema_to_table_names
 
 
 class RapidsDB(base.Connection):
@@ -20,7 +19,7 @@ class RapidsDB(base.Connection):
         self.kwargs = kwargs
 
     def open(self) -> pyrdp.Connection:
-        """Overload base connection open() with RDP driver."""
+        """Overload base connection open() with RapidsDB driver."""
         if self.__connection__ is None:
             self.__connection__ = pyrdp.connect(
                 host=self.host,
@@ -68,13 +67,14 @@ class RapidsDB(base.Connection):
         columns = None
 
         if filepath:
-            sql_script = self.normalize_query(filepath)
+            sql_script = self.read_sql(filepath)
 
-        for tbl in all_tables:
-            sql_script = sql_script.replace(tbl, f"{self.db_name}.{tbl}")
+        statements = add_schema_to_table_names(sql_script, self.db_name)
 
-        statements = sql_script.split(";")
+        statements = statements.split(";")
         statements = [stmt.strip() for stmt in statements if stmt.strip()]
+
+        # breakpoint()
 
         try:
             for stmt in statements:
@@ -86,7 +86,10 @@ class RapidsDB(base.Connection):
                 elif stmt.startswith("--"):
                     pass
                 else:
-                    self.__cursor__.execute(stmt)
+                    rowcount = self.__cursor__.execute(stmt)
+                    if rowcount > 0:
+                        rset = self.__cursor__.fetchall()
+                        columns = [desc[0] for desc in self.__cursor__.description]
 
         except Exception as e:
             raise RuntimeError("Statement {} fails, exception: {}".format(stmt, e))
@@ -94,7 +97,8 @@ class RapidsDB(base.Connection):
 
 
 class RDP_TPCH(base.TPCH_Runner):
-    db_type = "rdp"
+    db_type = "rapidsdb"
+    schema_dir = SCHEMA_BASE.joinpath("rapidsdb")
 
     def __init__(self, connection: RapidsDB, db_id: int, scale: str = "small"):
         super().__init__(connection, db_id, scale),
@@ -108,7 +112,7 @@ class RDP_TPCH(base.TPCH_Runner):
         Note: this method requires an active DB connection.
         """
         with self._conn as conn:
-            conn.query_from_file(f"{SHEMA_DIR}/table_schema.sql")
+            conn.query_from_file(f"{self.schema_dir}/table_schema.sql")
             conn.commit()
             print("TPC-H tables are created.")
 
@@ -126,7 +130,7 @@ class RDP_TPCH(base.TPCH_Runner):
         try:
             with self._conn as conn:
                 conn._ensure_impex_connector(dpath, delimiter)
-                conn.query_from_file(f"{SHEMA_DIR}/load.sql")
+                conn.query_from_file(f"{self.schema_dir}/load.sql")
                 conn.commit()
         except Exception as e:
             print(f"Load data fails, exception: {e}", file=sys.stderr)

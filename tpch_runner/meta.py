@@ -34,6 +34,7 @@ Base = declarative_base()
 db_classes = {
     "mysql": ".tpch.databases.mysqldb.MySQLDB",
     "pg": ".tpch.databases.pgdb.PGDB",
+    "rapidsdb": ".tpch.databases.rapidsdb.RapidsDB",
 }
 
 
