@@ -133,3 +133,4 @@ tpch/data/*
 !data/*.csv
 
 results.db
+tpch.duckdb
