@@ -4,6 +4,7 @@ from typing import Optional, Type
 
 import click
 import matplotlib.pyplot as plt
+import numpy as np
 
 from .. import meta
 from ..tpch.databases import base
@@ -24,14 +25,20 @@ def get_db(
     if not id and not alias_:
         click.echo("Either database ID or alias is required.")
         sys.exit(1)
-    db: meta.Database = rm.get_databases(id=id, alias=alias_)[0]
-    if not db:
-        click.echo(f"Database {id} or alias {alias_} not found.")
+
+    try:
+        db: meta.Database = rm.get_databases(id=id, alias=alias_)[0]
+        if not db:
+            click.echo(f"Database {id} or alias {alias_} not found.")
+            sys.exit(1)
+        elif db.db_type not in meta.db_classes:
+            click.echo(f"Unsupported database type: {db.db_type}")
+            sys.exit(1)
+        return db
+    except IndexError:
+        db_name = alias_ if alias_ else str(id)
+        click.echo(f"Error fetching database: {db_name}")
         sys.exit(1)
-    elif db.db_type not in meta.db_classes:
-        click.echo(f"Unsupported database type: {db.db_type}")
-        sys.exit(1)
-    return db
 
 
 def get_db_manager(db: meta.Database, scale: str = "small") -> base.TPCH_Runner:
@@ -52,23 +59,39 @@ def get_db_manager(db: meta.Database, scale: str = "small") -> base.TPCH_Runner:
 
         db_class = RDP_TPCH
         conn_class = RapidsDB
+    elif db.db_type == "duckdb":
+        from ..tpch.databases.duckdb import Duckdb_TPCH, DuckLDB
+
+        db_class = Duckdb_TPCH
+        conn_class = DuckLDB
     else:
         raise ValueError(f"Unsupported database type: {db.db_type}")
 
-    dbconn = conn_class(
-        host=db.host,
-        port=int(db.port),
-        db_name=db.dbname,
-        user=db.user,
-        password=db.password,
-    )
+    if db.db_type == "duckdb":
+        dbconn = conn_class(
+            host=db.host,
+            port=db.port,
+            db_name=db.dbname,
+            user=db.user,
+            password=db.password,
+        )
+    else:
+        dbconn = conn_class(
+            host=db.host,
+            port=int(db.port),
+            db_name=db.dbname,
+            user=db.user,
+            password=db.password,
+        )
     db_manager: base.TPCH_Runner = db_class(
         dbconn, db_id=db.id, scale=scale  # type: ignore
     )
     return db_manager
 
 
-def barchart(title, labels, data, fpath):
+def barchart(title, data, fpath):
+    labels = [f"Q{i}" for i in range(1, 23)]
+
     plt.figure(figsize=(12, 6))
     plt.bar(labels, data, color="skyblue")
 
@@ -77,37 +100,31 @@ def barchart(title, labels, data, fpath):
     plt.ylabel("Runtime (seconds)", fontsize=14)
     plt.xticks(rotation=45)
     plt.tight_layout()
+    plt.legend()
     plt.savefig(fpath, dpi=300)
 
 
 def barchart2(
     d1_label,
     d2_label,
-    labels: list[str],
     data1: list[float],
     data2: list[float],
     fpath: str,
 ):
-    import matplotlib.pyplot as plt
-    import numpy as np
+    labels = [f"Q{i}" for i in range(1, 23)]
 
-    # Data
-    queries = labels
-
-    # Bar Chart Setup
-    x = np.arange(len(queries))  # the label locations
+    x = np.arange(len(labels))  # the label locations
     width = 0.35  # the width of the bars
 
     fig, ax = plt.subplots(figsize=(10, 6))
     ax.bar(x - width / 2, data1, width, label=d1_label, color="blue")
     ax.bar(x + width / 2, data2, width, label=d2_label, color="orange")
 
-    # Add labels, title, and legend
     ax.set_xlabel("Queries")
     ax.set_ylabel("Execution Time (s)")
     ax.set_title("Comparison of TPC-H Power Test Records")
     ax.set_xticks(x)
-    ax.set_xticklabels(queries)
+    ax.set_xticklabels(labels)
     ax.legend()
 
     # Show bar chart
@@ -115,7 +132,9 @@ def barchart2(
     plt.savefig(f"{fpath}.png", dpi=300)
 
 
-def linechart(title, labels, data, fpath):
+def linechart(title, data, fpath):
+    labels = [f"Q{i}" for i in range(1, 23)]
+
     plt.figure(figsize=(12, 6))
     plt.plot(labels, data, marker="o", linestyle="-", color="blue")
 
@@ -124,59 +143,88 @@ def linechart(title, labels, data, fpath):
     plt.ylabel("Runtime (seconds)", fontsize=14)
     plt.xticks(rotation=45)
     plt.grid(True)
+    plt.legend()
     plt.savefig(fpath, dpi=300)
 
 
-def linechart_multi(
-    title: str, labels: list[str], trends: list[dict], fpath: str
-) -> None:
+def linechart_multi(trends: list[dict], fpath: str) -> None:
     """
     Generate a line chart to visualize TPC-H query runtime trends.
 
     Parameters:
-    - title (str): The title of the chart.
-    - labels (list[str]): The labels for the x-axis.
     - trends (list[dict]): A list of dictionaries, each containing:
         - 'name': A string representing the trend name.
         - 'data': A list of y-axis values corresponding to labels.
     - fpath (str): The file path to save the generated chart.
-
-    Returns:
-    None
     """
+    labels = [f"Q{i}" for i in range(1, 23)]
+
     plt.figure(figsize=(12, 6))
     for trend in trends:
         name = trend.get("name", None)
         data = trend.get("data", [])
         plt.plot(labels, data, marker="o", linestyle="-", label=name)
 
-    plt.title(f"{title} TPC-H Queries Runtime", fontsize=16)
+    plt.title("TPC-H Queries Runtime", fontsize=16)
     plt.xlabel("Query", fontsize=14)
     plt.ylabel("Runtime (seconds)", fontsize=14)
     plt.xticks(rotation=45)
     plt.grid(True)
+    plt.legend()
     plt.savefig(fpath, dpi=300)
+
+
+def barchart_multi(trends: list[dict], fpath: str) -> None:
+    """
+    Generate a barchart to compare total runtimes of multiple TPC-H powertests.
+
+    Parameters:
+    - trends (list[dict]): A list of dictionaries, each containing:
+        - 'name': A string representing the trend name.
+        - 'data': A list of y-axis values corresponding to labels.
+    - fpath (str): The file path to save the generated chart.
+    """
+    labels = ["total runtime"]
+
+    # num_trends = len(trends)
+    indices = np.arange(1)
+    fig, ax = plt.subplots(figsize=(10, 6))
+    bar_width = 0.15
+
+    for i, trend in enumerate(trends):
+        name = trend.get("name", None)
+        data = trend.get("data", [])
+        ax.bar(indices + i * bar_width, data, width=bar_width, label=name)
+
+    # ax.set_xlabel("Tests")
+    ax.set_ylabel("Total Time (s)")
+    ax.set_title("Comparison of TPC-H PowerTest Runtime")
+
+    ax.set_xticks(indices + (bar_width * (len(trends) - 1)) / 2)
+    ax.set_xticklabels(labels)
+    ax.legend()
+
+    plt.tight_layout()
+    plt.savefig(f"{fpath}.png", dpi=300)
 
 
 def linechart2(
     d1_label,
     d2_label,
-    labels: list[str],
     data1: list[float],
     data2: list[float],
     fpath: str,
 ):
-    # Line Chart Setup
+    labels = [f"Q{i}" for i in range(1, 23)]
+
     fig, ax = plt.subplots(figsize=(10, 6))
     ax.plot(labels, data1, marker="o", label=d1_label, color="blue")
     ax.plot(labels, data2, marker="s", label=d2_label, color="orange")
 
-    # Add labels, title, and legend
     ax.set_xlabel("Queries")
     ax.set_ylabel("Execution Time (s)")
     ax.set_title("Comparison of TPC-H Power Test Records")
     ax.legend()
 
-    # Show line chart
     plt.tight_layout()
     plt.savefig(f"{fpath}.png", dpi=300)

@@ -12,7 +12,15 @@ from tpch_runner.config import app_root
 from .. import meta
 from ..tpch import supported_databases
 from . import CONTEXT_SETTINGS
-from .utils import barchart, barchart2, format_datetime, linechart, linechart2
+from .utils import (
+    barchart,
+    barchart2,
+    barchart_multi,
+    format_datetime,
+    linechart,
+    linechart2,
+    linechart_multi,
+)
 
 
 @click.group(
@@ -115,7 +123,7 @@ def validate(ctx, test_id: int) -> None:
     TEST_ID: ID of the test to validate.
     """
     rm: meta.TestResultManager = ctx["rm"]
-
+    breakpoint()
     try:
         ok, result_folder = rm.compare_powertest(test_id)
         if not ok:
@@ -218,7 +226,10 @@ def show(ctx, test_id: int):
             report.append((k, v))
 
         # get query results from powertest
-        query_results: list[meta.TestResult] = result.results
+        # query_results: list[meta.TestResult] = result.results
+        query_results: list[meta.TestResult] = sorted(
+            result.results, key=lambda r: int(r.query_name[1:])
+        )
         query_reports = []
         for query in query_results:
             query_reports.append(
@@ -263,9 +274,9 @@ def show(ctx, test_id: int):
     help="Chart type",
 )
 @click.argument("test_id")
-@click.argument("ref_test_id")
+@click.argument("ref_test_id", required=False, default=None)
 @click.pass_obj
-def draw(ctx, test_id: int, ref_test_id: int, chart: str) -> None:
+def draw(ctx, test_id: int, ref_test_id: Optional[int], chart: str) -> None:
     """Generate Powertest runtime chart.
 
     TEST_ID: ID of the test to show.
@@ -286,6 +297,8 @@ def draw(ctx, test_id: int, ref_test_id: int, chart: str) -> None:
 
     try:
         db, test_name, total_runtime, query_runtimes = rm.get_powertest_runtime(test_id)
+        # print("runtime:", query_runtimes)
+
         chart_file_path = Path(app_root).joinpath(f"{test_name}.png").expanduser()
         if ref_test_id:
             compare = True
@@ -299,19 +312,49 @@ def draw(ctx, test_id: int, ref_test_id: int, chart: str) -> None:
                 .expanduser()
             )
 
-        queries = [f"Q{i}" for i in range(1, 23)]
     except Exception as e:
         click.echo(f"Fails to retrieve Powertest {test_id} record.\nException: {e}")
         return
 
-    # generate chart
     if compare:
         compare_chart_func(
-            db, ref_db, queries, query_runtimes, ref_query_runtimes, str(chart_file_path)
+            db, ref_db, query_runtimes, ref_query_runtimes, str(chart_file_path)
         )
     else:
-        single_chart_func(db, queries, query_runtimes, chart_file_path)
+        single_chart_func(db, query_runtimes, chart_file_path)
     print(f"Chart saved to {chart_file_path}")
+
+
+@cli.command("multi")
+@click.argument("results", nargs=-1)
+@click.pass_obj
+def multi(ctx, results: tuple) -> None:
+    """Compare two or more test results.
+
+    RESULTS: one or more test IDs separated by space.
+    """
+    rm: meta.TestResultManager = ctx["rm"]
+
+    if len(results) < 2:
+        raise ValueError("Compare results requires at least two results.")
+
+    result_data = []
+    _test_names = ""
+    total_time = []
+    fpath = ""
+    for id in results:
+        db, test_name, total_runtime, query_runtimes = rm.get_powertest_runtime(id)
+        result_data.append({"name": test_name, "data": query_runtimes})
+        total_time.append({"name": test_name, "data": total_runtime})
+        _test_names = _test_names + " " + test_name
+        fpath = db if not fpath else fpath + "-" + db
+
+    fpath_bar = str(Path(app_root).joinpath("bar-" + fpath + "-multi.png").expanduser())
+    fpath_line = str(Path(app_root).joinpath("line-" + fpath + "-multi.png").expanduser())
+
+    print(f"Comparing test results of {_test_names}")
+    linechart_multi(result_data, fpath_line)
+    barchart_multi(result_data, fpath_bar)
 
 
 if __name__ == "__main__":

@@ -134,7 +134,7 @@ def show(ctx, test_id: int):
 
         if query.count("\n") + len(df) > 25:
             input("\nPress Enter to continue...")
-        print(f"Query Q{result.query_name} Text:")
+        print(f"Query {result.query_name.upper()} Text:")
         print("-" * 50)
         print(query)
 

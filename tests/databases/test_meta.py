@@ -38,7 +38,7 @@ class TestGetPowerTestRuntime(unittest.TestCase):
                 INSERT INTO results
                     (id, db_type, result_folder, testtime, success, runtime,
                     rowcount, result_csv, query_name)
-                VALUES (1, 'pg', 'test_folder', '2000-01-01', 1, 120.5, 10, '1.csv', '1')
+                VALUES (1, 'pg', 'test_folder', '2000-01-01', 1, 120.5, 10, '1.csv', 'q1')
             """
                 )
             )

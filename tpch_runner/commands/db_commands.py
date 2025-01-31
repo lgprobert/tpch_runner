@@ -1,10 +1,11 @@
 import sys
+from pathlib import Path
 
 import click
 from rich_click import RichGroup
 from tabulate import tabulate
 
-from .. import meta
+from .. import logger, meta
 from ..tpch import DATA_DIR, all_tables, supported_databases
 from ..tpch.databases import base
 from . import CONTEXT_SETTINGS
@@ -59,17 +60,21 @@ def ls(ctx) -> None:
     default="mysql",
     help="DB type",
 )
-@click.option("-h", "--host", help="Database host")
-@click.option("-p", "--port", help="Database port")
-@click.option("-u", "--user", help="Database user")
-@click.option("-W", "--password", help="Database password")
-@click.option("-d", "--db", "dbname", help="Database name")
+@click.option("-h", "--host", default="localhost", help="Database host")
+@click.option("-p", "--port", default="", help="Database port")
+@click.option("-u", "--user", default="", help="Database user")
+@click.option("-W", "--password", default="", help="Database password")
+@click.option("-d", "--db", "dbname", default="", help="Database name")
 @click.option("-a", "--alias", help="Database alias")
 @click.option("-W", "cli_password", is_flag=True, help="Enter password on command line.")
 @click.pass_obj
-def add(ctx, db_type, host, port, user, password, dbname, alias, cli_password) -> None:
+def add(
+    ctx, db_type, host, port: str, user, password, dbname, alias, cli_password
+) -> None:
     """Add a new database connection."""
     rm: meta.DBManager = ctx["rm"]
+    if not port.isdigit():
+        port = str(Path(port).expanduser())
     if cli_password:
         password = click.prompt("Enter database password", hide_input=True)
     rm.add_database(db_type, host, port, user, password, dbname, alias)
@@ -172,8 +177,9 @@ def create(ctx, db_id, alias) -> None:
     help="Table name",
 )
 @click.option("-p", "--path", "data_folder", default=str(DATA_DIR), help="Data folder")
+@click.option("-m", "--delimiter", default=",", help="Column delimiter")
 @click.pass_obj
-def load(ctx, db_id, alias, table, data_folder) -> None:
+def load(ctx, db_id, alias, table, data_folder, delimiter) -> None:
     """Load specified table or all tables.
 
     DB_ID: database ID
@@ -183,9 +189,13 @@ def load(ctx, db_id, alias, table, data_folder) -> None:
     db_manager: base.TPCH_Runner = get_db_manager(db)
 
     if table:
-        db_manager.load_single_table(table, data_folder=data_folder)
+        if db.db_type == "rapidsdb":
+            logger.error("RapidsDB does not support single table loading.")
+        db_manager.load_single_table(table, data_folder=data_folder, delimiter=delimiter)
     else:
-        db_manager.load_data(data_folder=data_folder)
+        db_manager.load_data(data_folder=data_folder, delimiter=delimiter)
+        logger.info("Running after load optimization.")
+        db_manager.after_load()
 
 
 @cli.command("reload")

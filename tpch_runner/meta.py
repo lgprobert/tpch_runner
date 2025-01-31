@@ -35,6 +35,7 @@ db_classes = {
     "mysql": ".tpch.databases.mysqldb.MySQLDB",
     "pg": ".tpch.databases.pgdb.PGDB",
     "rapidsdb": ".tpch.databases.rapidsdb.RapidsDB",
+    "duckdb": ".tpch.databases.duckdb.DuckLDB",
 }
 
 
@@ -262,18 +263,18 @@ class TestResultManager:
         return f"{db_type}_{current_time}"
 
     def add_powertest(
-        self,
-        db_id: int,
-        db_type: str,
-        scale: str = "small",
+        self, db_id: int, db_type: str, scale: str = "small", no_report: bool = False
     ) -> tuple[datetime, str]:
         attempt = 0
-        max_attempts = 3
+        max_attempts = 1
         while attempt < max_attempts:
             try:
                 test_time = datetime.now()
                 result_folder = self._generate_result_folder(db_type, test_time)
 
+                if no_report:
+                    logger.debug("generate test_time and result_folder.")
+                    return test_time, result_folder
                 with self.Session() as session:
                     session.add(
                         PowerTest(
@@ -288,11 +289,12 @@ class TestResultManager:
                 logger.info(f"PowerTest added: {result_folder}")
             except Exception as e:
                 self._conn.rollback()
-                attempt += 1
+
                 if attempt >= max_attempts:
                     print("Max attempts reached. Could not insert the record.")
                     raise DatabaseError(None, None, e)
                 time.sleep(1)
+            attempt += 1
         return test_time, result_folder
 
     def update_powertest(
@@ -428,6 +430,8 @@ class TestResultManager:
             result = query.filter(PowerTest.id == test_id).first()
             if result is None:
                 raise ValueError(f"PowerTest {test_id} not found.")
+
+            result.results = sorted(result.results, key=lambda r: int(r.query_name[1:]))
             total_runtime = result.runtime
             db_type = result.db_type
             test_name = result.result_folder
@@ -446,7 +450,8 @@ class TestResultManager:
         result_folder,
         db_id,
     ):
-
+        if rowcount is None:
+            rowcount = 0
         try:
             with self.Session() as session:
                 new_result = TestResult(
