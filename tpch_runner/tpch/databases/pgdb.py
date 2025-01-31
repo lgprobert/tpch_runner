@@ -5,10 +5,10 @@ from pathlib import Path
 
 import psycopg2
 
-from .. import DATA_DIR, all_tables, timeit
+from .. import DATA_DIR, SCHEMA_BASE, all_tables, timeit
 from . import base
 
-SHEMA_DIR = Path(__file__).parents[1].joinpath("schema/pg")
+SCHEMA_DIR = SCHEMA_BASE.joinpath("schema/pg")
 
 
 class PGDB(base.Connection):
@@ -45,6 +45,7 @@ class PGDB(base.Connection):
 
 class PG_TPCH(base.TPCH_Runner):
     db_type = "pg"
+    schema_dir = SCHEMA_BASE.joinpath("pg")
 
     def __init__(self, connection: PGDB, db_id: int, scale: str = "small"):
         super().__init__(connection, db_id, scale),
@@ -59,38 +60,51 @@ class PG_TPCH(base.TPCH_Runner):
         """
         with self._conn as conn:
             print("Create tables")
-            conn.query_from_file(f"{SHEMA_DIR}/table_schema.sql")
+            conn.query_from_file(f"{self.schema_dir}/table_schema.sql")
             print("Add primary keys")
-            conn.query_from_file(f"{SHEMA_DIR}/pg_constraints.sql")
+            conn.query_from_file(f"{self.schema_dir}/pg_constraints.sql")
             conn.commit()
         print("TPC-H tables are created.")
 
     @timeit
-    def load_single_table(self, table: str, data_folder: str = str(DATA_DIR)):
+    def load_single_table(
+        self,
+        table: str,
+        data_folder: str = str(DATA_DIR),
+        delimiter: str = ",",
+    ):
         """Load test data into TPC-H tables."""
+        data_file = Path(data_folder).joinpath(
+            self._get_datafile(Path(data_folder), table)
+        )
         try:
             with self._conn as conn:
-                conn.copyFrom(Path(data_folder).joinpath(f"{table}.csv"), ",", table)
+                conn.copyFrom(data_file, delimiter, table)
                 conn.commit()
         except Exception as e:
             print(f"Load data fails, exception: {e}", file=sys.stderr)
 
     @timeit
-    def load_data(self, table: str = "all", data_folder: str = str(DATA_DIR)):
+    def load_data(
+        self,
+        table: str = "all",
+        data_folder: str = str(DATA_DIR),
+        delimiter: str = ",",
+    ):
         if table != "all" and table not in all_tables:
             raise ValueError(f"Invalid table name {table}.")
         elif table != "all":
-            self.load_single_table(table, data_folder=data_folder)
+            self.load_single_table(table, data_folder=data_folder, delimiter=delimiter)
         else:
             for tbl in all_tables:
-                self.load_single_table(tbl, data_folder=data_folder)
+                self.load_single_table(tbl, data_folder=data_folder, delimiter=delimiter)
             print("All tables finish loading.")
 
     @timeit
     def after_load(self):
         with self._conn as conn:
             print("Create indexes")
-            conn.query_from_file(f"{SHEMA_DIR}/pg_index.sql")
+            conn.query_from_file(f"{self.schema_dir}/pg_index.sql")
             conn.commit()
 
             print("Analyze database")

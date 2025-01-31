@@ -1,15 +1,19 @@
 """Module for MySQL database TPC-H benchmark runner."""
 
+import logging
 import sys
 from pathlib import Path
 from typing import Optional
 
 import pymysql
 
-from .. import DATA_DIR, timeit
+from .. import DATA_DIR, SCHEMA_BASE, timeit
 from . import base
 
-SHEMA_DIR = Path(__file__).parents[1].joinpath("schema/mysql")
+SCHEMA_DIR = SCHEMA_BASE.joinpath("schema/mysql")
+
+
+logger = logging.getLogger(__name__)
 
 
 class MySQLDB(base.Connection):
@@ -53,6 +57,7 @@ class MySQLDB(base.Connection):
 
 class MySQL_TPCH(base.TPCH_Runner):
     db_type = "mysql"
+    schema_dir = SCHEMA_BASE.joinpath("mysql")
 
     def __init__(self, connection: MySQLDB, db_id: int, scale: str = "small"):
         super().__init__(connection, db_id, scale),
@@ -66,8 +71,8 @@ class MySQL_TPCH(base.TPCH_Runner):
         Note: this method requires an active DB connection.
         """
         with self._conn as conn:
-            conn.query_from_file(f"{SHEMA_DIR}/table_schema.sql")
-            conn.query_from_file(f"{SHEMA_DIR}/mysql_pkeys.sql")
+            conn.query_from_file(f"{self.schema_dir}/table_schema.sql")
+            conn.query_from_file(f"{self.schema_dir}/mysql_pkeys.sql")
             conn.commit()
             print("TPC-H tables are created.")
 
@@ -76,11 +81,15 @@ class MySQL_TPCH(base.TPCH_Runner):
         self,
         table: str,
         line_terminator: Optional[str] = None,
+        delimiter: str = ",",
         data_folder: str = str(DATA_DIR),
     ):
         """Load test data into TPC-H tables."""
-        data_file = Path(data_folder).joinpath(f"{table}.csv")
-        delimiter = ","
+        # data_file = Path(data_folder).joinpath(f"{table}.csv")
+        data_file = Path(data_folder).joinpath(
+            self._get_datafile(Path(data_folder), table)
+        )
+        # delimiter = ","
         load_command = f"""
             load data local infile '{data_file}' into table {table}
             fields terminated by '{delimiter}'
@@ -91,7 +100,7 @@ class MySQL_TPCH(base.TPCH_Runner):
             with self._conn as conn:
                 rowcount = conn.query(load_command)
                 conn.commit()
-            print(f"{rowcount} rows")
+            print(f"{table}: {rowcount} rows")
         except Exception as e:
             print(f"Load data fails, exception: {e}", file=sys.stderr)
 
@@ -115,18 +124,18 @@ class MySQL_TPCH(base.TPCH_Runner):
                     file=sys.stderr,
                 )
             elif idx_check_result is None:
-                print(
+                logger.info(
                     "IDX index check has no result, I will continue but operation may "
                     "fail if IDX index exists."
                 )
 
             if idx_check_result is True:
-                print("Create indexes")
-                conn.query_from_file(f"{SHEMA_DIR}/mysql_index.sql")
+                logger.info("Create indexes")
+                conn.query_from_file(f"{self.schema_dir}/mysql_index.sql")
                 conn.commit()
 
-            print("Analyze database")
-            conn.query_from_file(f"{SHEMA_DIR}/after-load.sql")
+            logger.info("Analyze database")
+            conn.query_from_file(f"{self.schema_dir}/after-load.sql")
 
     @timeit
     def drop_indexes(self):
@@ -143,7 +152,7 @@ class MySQL_TPCH(base.TPCH_Runner):
                 index_count = conn.query(drop_commands)
                 if index_count > 0:
                     for cmd in conn.fetch():
-                        print()
+                        # print()
                         # print(cmd[0])
                         conn.query(cmd[0])
                 conn.commit()

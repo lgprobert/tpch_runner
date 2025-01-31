@@ -1,5 +1,6 @@
 """Module for RapidsDB database TPC-H benchmark runner."""
 
+import logging
 import sys
 from pathlib import Path
 from typing import Iterable, Optional, Union
@@ -9,6 +10,8 @@ from pyRDP import pyrdp
 from .. import DATA_DIR, SCHEMA_BASE, timeit
 from . import base
 from .parser import add_schema_to_table_names
+
+logger = logging.getLogger(__name__)
 
 
 class RapidsDB(base.Connection):
@@ -31,6 +34,17 @@ class RapidsDB(base.Connection):
         self.__cursor__: pyrdp.Cursor = self.__connection__.cursor()  # type: ignore
         return self.__connection__
 
+    @staticmethod
+    def _parse_impex_path(connector_ddl: str) -> Optional[Path]:
+        # input: "CREATE CONNECTOR CSV TYPE IMPEX WITH PATH='/home/robert/data/tpch/sf1', DELIMITER='|' NODE *" # noqa
+        # result: ['PATH=', '/home/robert/data/tpch/sf1', ',']
+        impex_path = [p for p in connector_ddl.split() if p.startswith("PATH")][0]
+
+        _path = impex_path.split("'")[1]
+        if _path and Path(_path).is_dir():
+            return Path(_path)
+        return None
+
     def _ensure_impex_connector(
         self, data_path: Union[str, Path], delimiter: str = "|"
     ) -> bool:
@@ -40,10 +54,20 @@ class RapidsDB(base.Connection):
         - delimiter (str): column delimiter.
         - data_path (Union[str, Path]): absolute path to the data directory.
         """
+        replace_impex = False
+
         if self.__cursor__.has_connector("csv"):
-            return True
+            self.query(
+                "select CONNECTOR_DDL from connectors where connector_name = 'CSV'"
+            )
+            _rset = self.fetch()
+            connector_ddl = _rset[0][0]  # type: ignore
+            if self._parse_impex_path(connector_ddl) == Path(data_path).expanduser():
+                return True
+            replace_impex = True
+
         if isinstance(data_path, str):
-            data_path = Path(data_path)
+            data_path = Path(data_path).expanduser()
         if not data_path.is_dir():
             raise FileNotFoundError(f"Data directory {data_path} not found.")
 
@@ -51,10 +75,16 @@ class RapidsDB(base.Connection):
             CREATE CONNECTOR CSV TYPE IMPEX WITH PATH='{str(data_path)}',
             DELIMITER='{delimiter}'
         """
+        if replace_impex:
+            cmd = f"drop connector csv; {cmd}"
+            logger.info("Recreate IMPEX connector CSV")
         self.__cursor__.execute(cmd)
+        logger.info("IMPEX connector CSV is created.")
         return True
 
-    def query_from_file(self, filepath) -> tuple[int, Optional[Iterable], Optional[list]]:
+    def query_from_file(
+        self, filepath, file_suffix: Optional[str] = None
+    ) -> tuple[int, Optional[Iterable], Optional[list]]:
         """Return number of rows affected by last query or -1 if database is
         closed or executing DDL statements.
         """
@@ -68,6 +98,9 @@ class RapidsDB(base.Connection):
 
         if filepath:
             sql_script = self.read_sql(filepath)
+
+        if Path(filepath).name == "load.sql" and file_suffix:
+            sql_script = sql_script.replace(".tbl", file_suffix)
 
         statements = add_schema_to_table_names(sql_script, self.db_name)
 
@@ -130,7 +163,16 @@ class RDP_TPCH(base.TPCH_Runner):
         try:
             with self._conn as conn:
                 conn._ensure_impex_connector(dpath, delimiter)
-                conn.query_from_file(f"{self.schema_dir}/load.sql")
+                data_files = dpath.glob("*")
+                file_suffix = None
+                if len([f for f in data_files if f.suffix == ".tbl"]) == 0:
+                    any_file = next(dpath.glob("*"))
+                    file_suffix = any_file.suffix
+
+                conn.query_from_file(
+                    f"{self.schema_dir}/load.sql", file_suffix=file_suffix
+                )
                 conn.commit()
+            logger.info("TPC-H all tables are loaded.")
         except Exception as e:
             print(f"Load data fails, exception: {e}", file=sys.stderr)
