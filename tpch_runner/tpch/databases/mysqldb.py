@@ -10,9 +10,6 @@ import pymysql
 from .. import DATA_DIR, SCHEMA_BASE, timeit
 from . import base
 
-SCHEMA_DIR = SCHEMA_BASE.joinpath("schema/mysql")
-
-
 logger = logging.getLogger(__name__)
 
 
@@ -51,7 +48,7 @@ class MySQLDB(base.Connection):
             WHERE TABLE_SCHEMA = 'tpch' AND INDEX_NAME LIKE 'IDX%';
         """
         rowcount = self.__cursor__.execute(idx_indexes)
-        print("existing IDX indexes: ", rowcount)
+        print(f"existing IDX indexes: {rowcount}.\n")
         return rowcount == 0
 
 
@@ -85,11 +82,9 @@ class MySQL_TPCH(base.TPCH_Runner):
         data_folder: str = str(DATA_DIR),
     ):
         """Load test data into TPC-H tables."""
-        # data_file = Path(data_folder).joinpath(f"{table}.csv")
         data_file = Path(data_folder).joinpath(
             self._get_datafile(Path(data_folder), table)
         )
-        # delimiter = ","
         load_command = f"""
             load data local infile '{data_file}' into table {table}
             fields terminated by '{delimiter}'
@@ -104,8 +99,22 @@ class MySQL_TPCH(base.TPCH_Runner):
         except Exception as e:
             print(f"Load data fails, exception: {e}", file=sys.stderr)
 
+    def before_load(self, reindex: bool = False):
+        with self._conn as conn:
+            try:
+                conn.query("set autocommit = 0;")
+                conn.query("set unique_checks = 0;")
+                conn.query("set foreign_key_checks = 0;")
+                conn.query("set sql_log_bin = 0;")
+                if reindex:
+                    self.drop_indexes()
+            except Exception as e:
+                logger.error("You don't have permission to run priliged commands.")
+                logger.error(f"Exception: {e}")
+                return
+
     @timeit
-    def after_load(self, bypass: bool = False):
+    def after_load(self, reindex: bool = False):
         """Create indexes and analyze, optimize tables after data loading.
 
         Parameters:
@@ -113,23 +122,23 @@ class MySQL_TPCH(base.TPCH_Runner):
             found IDX indexes exist.
         """
         with self._conn as conn:
-            idx_check_result = conn._index_exists()
-            if idx_check_result is False:
-                print("There are IDX indexes exist, remove them first.", file=sys.stderr)
-                # os._exit(1)
-                if not bypass:
-                    return
-                print(
-                    "You choose to bypass, indexes create will be skipped.",
-                    file=sys.stderr,
-                )
-            elif idx_check_result is None:
-                logger.info(
-                    "IDX index check has no result, I will continue but operation may "
-                    "fail if IDX index exists."
-                )
+            try:
+                conn.query("set autocommit = 1;")
+                conn.query("set unique_checks = 1;")
+                conn.query("set foreign_key_checks = 1;")
+                conn.query("set sql_log_bin = 1;")
+            except Exception as e:
+                logger.error("You don't have permission to run priliged commands.")
+                logger.error(f"Exception: {e}")
+                return
 
-            if idx_check_result is True:
+            if reindex:
+                idx_check_result = conn._index_exists()
+                if idx_check_result is False:
+                    print(
+                        "There are IDX indexes exist, remove them first.", file=sys.stderr
+                    )
+                    self.drop_indexes()
                 logger.info("Create indexes")
                 conn.query_from_file(f"{self.schema_dir}/mysql_index.sql")
                 conn.commit()
@@ -147,16 +156,14 @@ class MySQL_TPCH(base.TPCH_Runner):
               AND INDEX_NAME LIKE 'IDX%';
         """
         try:
-            print("Check if there is any indexes exist.")
+            print("\nCheck if there is any indexes exist.")
             with self._conn as conn:
                 index_count = conn.query(drop_commands)
                 if index_count > 0:
                     for cmd in conn.fetch():
-                        # print()
-                        # print(cmd[0])
                         conn.query(cmd[0])
                 conn.commit()
         except Exception as e:
             print(f"Drop index fails, exception: {e}.", file=sys.stderr)
             return
-        print("All IDX indexes are dropped.")
+        print("All IDX indexes are dropped.\n")

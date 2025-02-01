@@ -2,7 +2,7 @@
 import logging
 from pathlib import Path
 
-from . import app, commands, config, tpch
+from . import commands, config, tpch
 from ._version import __version__
 from .config import app_root
 

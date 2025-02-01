@@ -370,5 +370,8 @@ class TPCH_Runner:
         )
         return results
 
-    def after_load(self):
+    def after_load(self, reindex: bool = False):
+        pass
+
+    def before_load(self, reindex: bool = False):
         pass

@@ -178,8 +178,16 @@ def create(ctx, db_id, alias) -> None:
 )
 @click.option("-p", "--path", "data_folder", default=str(DATA_DIR), help="Data folder")
 @click.option("-m", "--delimiter", default=",", help="Column delimiter")
+@click.option(
+    "--optimize/--no-optimize",
+    default=True,
+    help="Optimize MySQL for batch data loading.",
+)
+@click.option("-r", "--reindex", is_flag=True, default=False, help="Recreate index")
 @click.pass_obj
-def load(ctx, db_id, alias, table, data_folder, delimiter) -> None:
+def load(
+    ctx, db_id, alias, table, data_folder, delimiter, optimize: bool, reindex: bool
+) -> None:
     """Load specified table or all tables.
 
     DB_ID: database ID
@@ -188,14 +196,19 @@ def load(ctx, db_id, alias, table, data_folder, delimiter) -> None:
     db = get_db(rm, id=db_id, alias_=alias)
     db_manager: base.TPCH_Runner = get_db_manager(db)
 
+    if optimize:
+        logger.info("Running before load optimization.")
+        db_manager.before_load(reindex=reindex)
     if table:
         if db.db_type == "rapidsdb":
             logger.error("RapidsDB does not support single table loading.")
         db_manager.load_single_table(table, data_folder=data_folder, delimiter=delimiter)
     else:
         db_manager.load_data(data_folder=data_folder, delimiter=delimiter)
+
+    if optimize:
         logger.info("Running after load optimization.")
-        db_manager.after_load()
+        db_manager.after_load(reindex=reindex)
 
 
 @cli.command("reload")

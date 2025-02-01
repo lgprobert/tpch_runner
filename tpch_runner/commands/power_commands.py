@@ -162,6 +162,13 @@ def compare(ctx, source, dest) -> None:
     )
     report.append(("Result Folder", src_result.result_folder, dest_result.result_folder))
 
+    if src_result.db_type != dest_result.db_type:
+        src_suffix = src_result.db_type
+        dest_suffix = dest_result.db_type
+    else:
+        src_suffix = source
+        dest_suffix = dest
+
     src_query_results: list[meta.TestResult] = src_result.results
     dest_query_results: list[meta.TestResult] = dest_result.results
     query_reports: list[tuple] = []
@@ -189,12 +196,12 @@ def compare(ctx, source, dest) -> None:
             query_reports,
             headers=[
                 "Query",
-                "Success-1",
-                "Success-2",
-                "Rowcount-1",
-                "Rowcount-2",
-                "Runtime (s)-1",
-                "Runtime (s)-2",
+                f"Success\n- {src_suffix}",
+                f"Success\n- {dest_suffix}",
+                f"Rowcount\n- {src_suffix}",
+                f"Rowcount\n- {dest_suffix}",
+                f"Runtime (s)\n- {src_suffix}",
+                f"Runtime (s)\n- {dest_suffix}",
             ],
             tablefmt="psql",
         )

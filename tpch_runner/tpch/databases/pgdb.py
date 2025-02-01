@@ -8,8 +8,6 @@ import psycopg2
 from .. import DATA_DIR, SCHEMA_BASE, all_tables, timeit
 from . import base
 
-SCHEMA_DIR = SCHEMA_BASE.joinpath("schema/pg")
-
 
 class PGDB(base.Connection):
     """Class for DBAPI connections to PostgreSQL database"""
@@ -101,11 +99,12 @@ class PG_TPCH(base.TPCH_Runner):
             print("All tables finish loading.")
 
     @timeit
-    def after_load(self):
+    def after_load(self, reindex: bool = False):
         with self._conn as conn:
-            print("Create indexes")
-            conn.query_from_file(f"{self.schema_dir}/pg_index.sql")
-            conn.commit()
+            if reindex:
+                print("Create indexes.")
+                conn.query_from_file(f"{self.schema_dir}/pg_index.sql")
+                conn.commit()
 
-            print("Analyze database")
+            print("\nAnalyze database")
             conn.query("analyze")
