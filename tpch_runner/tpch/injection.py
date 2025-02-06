@@ -38,10 +38,17 @@ def data_gen_batch(
 ) -> tuple[bool, str]:
     if not env_vars:
         env_vars = ENV_VARS
+    if "data_dir" in dir(config):
+        data_dir = Path(config.data_dir)
+    else:
+        data_dir = Path(env_vars["DSS_PATH"])
+    data_dir = data_dir.expanduser().joinpath("sf" + str(sf))
+    data_dir.mkdir(exist_ok=True)
+    env_vars["DSS_PATH"] = str(data_dir)
+
     table_key = TABLE_MAP.get(table)
     command = f"./tool/dbgen -T {table_key} -f -s {sf}"
     cwd = Path(__file__).parent.as_posix()
-    # print("full command:", command, "cwd:", cwd, type(cwd))
     result = subprocess.run(
         command,
         env=env_vars,
@@ -51,7 +58,9 @@ def data_gen_batch(
         cwd=cwd,
     )
     if result.returncode == 0:
-        print(f"succeeds, output: {result.stdout.splitlines()}")
+        print(
+            f"succeeds, output: {result.stdout.splitlines() if result.stdout else 'done'}"
+        )
         return True, result.stdout
     else:
         print(f"dbgen fails, error: {result.stderr.splitlines()}")
@@ -105,32 +114,6 @@ async def csv_to_json(
         yield json.dumps(row) + "\n"
 
         await asyncio.sleep(lagtime)
-
-
-async def stream_csv_to_json(file_path: str, fieldnames: list[str]) -> AsyncGenerator:
-    """Generator function to stream a CSV file as JSON."""
-    with open(file_path, mode="r", encoding="utf-8") as csv_file:
-        reader = csv.DictReader(
-            csv_file,
-            fieldnames=fieldnames,
-            delimiter="|",
-        )
-
-        for row in reader:
-            # delete empty column inferred by line terminator if exists
-            row.pop(None, None)
-
-            if RANDOM_LAG:
-                lagtime = random.uniform(0, MAX_LAG_TIME)
-            else:
-                lagtime = LAG_INTERVAL
-            row["lag_time"] = round(lagtime, 2)
-
-            json_str = json.dumps(row) + "\n"
-
-            yield json_str.encode("utf-8")
-
-            await asyncio.sleep(lagtime)
 
 
 def main(args):

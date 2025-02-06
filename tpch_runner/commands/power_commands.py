@@ -362,6 +362,7 @@ def multi(ctx, results: tuple) -> None:
     print(f"Comparing test results of {_test_names}")
     linechart_multi(result_data, fpath_line)
     barchart_multi(result_data, fpath_bar)
+    print(f"Comparison charts are saved to {fpath_line}, {fpath_bar}.")
 
 
 if __name__ == "__main__":

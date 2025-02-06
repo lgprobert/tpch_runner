@@ -1,8 +1,11 @@
 import logging
+import sys
 
 import click
 from rich_click import RichGroup
 
+from ..tpch import all_tables
+from ..tpch.injection import data_gen_batch
 from . import CONTEXT_SETTINGS
 from .db_commands import cli as dbcli
 from .power_commands import cli as powercli
@@ -32,6 +35,33 @@ def cli(ctx: click.Context, verbose: bool):
 def version() -> None:
     """Show Transformer version information."""
     click.echo("TPC-H Runner v1.0")
+
+
+@cli.command("generate")
+@click.option(
+    "-s",
+    "--scale",
+    default="1",
+    help="Scale factor",
+)
+@click.option(
+    "-t",
+    "--table",
+    default="all",
+    required=False,
+    help="Table to generate",
+)
+def generate(scale, table) -> None:
+    """Generate TPC-H test data set."""
+    if table != "all" and table not in all_tables:
+        logger.error(f"Invalid table {table}.")
+        logger.error(f"Supported tables: {', '.join(all_tables)}.")
+        sys.exit(1)
+
+    ok, _ = data_gen_batch(table, sf=int(scale))
+    if not ok:
+        logger.error("Data generation failed.\n")
+        sys.exit(1)
 
 
 def main():
