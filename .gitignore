@@ -126,6 +126,10 @@ dmypy.json
 .pyre/
 *.new
 
+# exclude tpch/tool/*
+**/tpch/tool/*
+!**/tpch/tool/.gitkeep
+
 queries/
 !tpch/queries/.gitkeep
 !**/schema/*/queries
