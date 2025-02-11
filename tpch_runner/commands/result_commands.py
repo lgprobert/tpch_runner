@@ -4,7 +4,7 @@ import click
 from rich_click import RichGroup
 from tabulate import tabulate
 
-from .. import meta
+from .. import logger, meta
 from ..tpch import supported_databases
 from . import CONTEXT_SETTINGS
 from .utils import format_datetime
@@ -36,39 +36,42 @@ def cli(ctx: click.Context):
 @click.pass_obj
 def ls(ctx, type_: str, single: bool):
     """List finished tests."""
-    rm: meta.TestResultManager = ctx["rm"]
-    headers: list[str] = [
-        "Test ID",
-        "DB",
-        "Query",
-        "Test Time",
-        "Success",
-        "Rowcount",
-        "Runtime (s)",
-    ]
+    try:
+        rm: meta.TestResultManager = ctx["rm"]
+        headers: list[str] = [
+            "Test ID",
+            "DB",
+            "Query",
+            "Test Time",
+            "Success",
+            "Rowcount",
+            "Runtime (s)",
+        ]
 
-    if single:
-        results = rm.get_test_results()
-    else:
-        results = rm.get_test_results_from_powertest(db_type=type_)
-        headers = ["Power ID"] + headers
-    record: meta.TestResult
-    report = []
-    for record in results:
-        arow = (
-            record.id,
-            record.db_type,
-            record.query_name,
-            format_datetime(record.testtime),  # type: ignore
-            record.success,
-            record.rowcount,
-            record.runtime,
-        )
-        if not single:
-            arow = (record.power_test.id,) + arow  # type: ignore
-        report.append(arow)
+        if single:
+            results = rm.get_test_results(db_type=type_)
+        else:
+            results = rm.get_test_results_from_powertest(db_type=type_)
+            headers = ["Power ID"] + headers
+        record: meta.TestResult
+        report = []
+        for record in results:
+            arow = (
+                record.id,
+                record.db_type,
+                record.query_name,
+                format_datetime(record.testtime),  # type: ignore
+                record.success,
+                record.rowcount,
+                record.runtime,
+            )
+            if not single:
+                arow = (record.power_test.id,) + arow  # type: ignore
+            report.append(arow)
 
-    print(tabulate(report, tablefmt="psql", headers=headers))
+        print(tabulate(report, tablefmt="psql", headers=headers))
+    except Exception as e:
+        logger.error(f"Error: {str(e)}")
 
 
 @cli.command("compare")
@@ -85,23 +88,30 @@ def ls(ctx, type_: str, single: bool):
 @click.pass_obj
 def compare(ctx, source, dest) -> None:
     """Compare two test results."""
-    rm: meta.TestResultManager = ctx["rm"]
+    try:
+        rm: meta.TestResultManager = ctx["rm"]
 
-    src_result: meta.TestResult = rm.get_test_results_from_powertest(test_id=source)[0]
-    dest_result: meta.TestResult = rm.get_test_results_from_powertest(test_id=dest)[0]
+        src_result: meta.TestResult = rm.get_test_results_from_powertest(test_id=source)[
+            0
+        ]
+        dest_result: meta.TestResult = rm.get_test_results_from_powertest(test_id=dest)[0]
 
-    report: list[tuple] = []
-    report.append(("Database", src_result.db_type, dest_result.db_type))
-    report.append(("Query", src_result.query_name, dest_result.query_name))
-    report.append(("Success", src_result.success, dest_result.success))
-    report.append(("Rowcount", src_result.rowcount, dest_result.rowcount))
-    report.append(
-        ("Runtime (s)", f"{src_result.runtime: .4f}", f"{dest_result.runtime: .4f}")
-    )
+        report: list[tuple] = []
+        report.append(("Database", src_result.db_type, dest_result.db_type))
+        report.append(("Query", src_result.query_name, dest_result.query_name))
+        report.append(("Success", src_result.success, dest_result.success))
+        report.append(("Rowcount", src_result.rowcount, dest_result.rowcount))
+        report.append(
+            ("Runtime (s)", f"{src_result.runtime: .4f}", f"{dest_result.runtime: .4f}")
+        )
 
-    print(
-        tabulate(report, tablefmt="psql", headers=["Attribute", "Source", "Destination"])
-    )
+        print(
+            tabulate(
+                report, tablefmt="psql", headers=["Attribute", "Source", "Destination"]
+            )
+        )
+    except Exception as e:
+        logger.error(f"Error: {str(e)}")
 
 
 @cli.command("show")
@@ -169,9 +179,8 @@ def delete(ctx, test_id: int):
 
     TEST_ID: ID of the test to delete.
     """
-    rm: meta.TestResultManager = ctx["rm"]
-
     try:
+        rm: meta.TestResultManager = ctx["rm"]
         rm.delete_test_result(test_id)
     except Exception as e:
         click.echo(f"Fails to delete test result {test_id}.\nException: {e}")

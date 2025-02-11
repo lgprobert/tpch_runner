@@ -2,7 +2,7 @@ import click
 from rich_click import RichGroup
 from tabulate import tabulate
 
-from .. import meta
+from .. import logger, meta
 from ..tpch.databases import base
 from . import CONTEXT_SETTINGS
 from .utils import get_db, get_db_manager
@@ -40,19 +40,22 @@ def run_query(ctx, query: int, alias_: str, db_id: int, report: bool) -> None:
     db = get_db(dbm, id=db_id, alias_=alias_)
     db_manager: base.TPCH_Runner = get_db_manager(db)
 
-    result, _, _ = db_manager.run_query(query_index=query, no_report=not report)
-    ok, rowcount, rset, columns, result_file = result
-    if ok:
-        click.echo(f"Query {query} executed successfully, row count: {rowcount}.")
-        if report:
-            click.echo(f"Result saved to {result_file}.")
-        click.echo("\n" + "-" * 55 + "\n")
-        if len(rset) > 25:
-            input("\nPress Enter to continue...")
-        click.echo("Query Result:")
-        click.echo(tabulate(rset, headers=columns, tablefmt="psql"))
-    else:
-        click.echo(f"Query {query} execution failed.")
+    try:
+        result, _, _ = db_manager.run_query(query_index=query, no_report=not report)
+        ok, rowcount, rset, columns, result_file = result
+        if ok:
+            click.echo(f"Query {query} executed successfully, row count: {rowcount}.")
+            if report:
+                click.echo(f"Result saved to {result_file}.")
+            click.echo("\n" + "-" * 55 + "\n")
+            if len(rset) > 25:
+                input("\nPress Enter to continue...")
+            click.echo("Query Result:")
+            click.echo(tabulate(rset, headers=columns, tablefmt="psql"))
+        else:
+            click.echo(f"Query {query} execution failed.")
+    except Exception as e:
+        logger.error(f"Error: {str(e)}")
 
 
 @cli.command("powertest")
@@ -71,4 +74,7 @@ def run_powertest(ctx, alias: str, db_id: int, report: bool, scale: str) -> None
     db = get_db(dbm, id=db_id, alias_=alias)
     db_manager: base.TPCH_Runner = get_db_manager(db, scale=scale)
 
-    db_manager.power_test(no_report=not report)  # type: ignore
+    try:
+        db_manager.power_test(no_report=not report)  # type: ignore
+    except Exception as e:
+        logger.error(f"Error: {str(e)}")
