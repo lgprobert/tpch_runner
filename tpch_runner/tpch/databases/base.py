@@ -253,7 +253,7 @@ class TPCH_Runner:
             self.load_single_table(table, data_folder=data_folder, delimiter=delimiter)
         else:
             for tbl in all_tables:
-                print()
+                print("table:", table)
                 self.load_single_table(tbl, data_folder=data_folder, delimiter=delimiter)
             print()
             logger.info("All tables finish loading.")
@@ -375,3 +375,16 @@ class TPCH_Runner:
 
     def before_load(self, reindex: bool = False):
         pass
+
+    def count_rows(self, table_name: str):
+        """Return number of rows in the given table or all tables."""
+        table_info = {}
+        with self._conn as conn:
+            if table_name != "all":
+                conn.query(f"select count(*) from {table_name}")
+                table_info[table_name] = conn.fetch()[0][0]
+            else:
+                for tbl in all_tables:
+                    conn.query(f"select count(*) from {tbl}")
+                    table_info[tbl] = conn.fetch()[0][0]
+        return table_info

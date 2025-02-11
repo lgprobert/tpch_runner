@@ -470,26 +470,12 @@ class TestResultManager:
         except Exception as e:
             raise e
 
-    def get_test_results(
-        self,
-        db_type: Optional[str] = None,
-        result_csv: Optional[str] = None,
-    ) -> list[TestResult]:
-        try:
-            with self.Session() as session:
-                query = session.query(TestResult)
-                if result_csv is not None:
-                    query = query.filter(TestResult.result_csv == result_csv)
-                elif db_type is not None:
-                    query = query.filter(
-                        TestResult.db_type == db_type,
-                        TestResult.result_folder.isnot(None),
-                    )
-                else:
-                    query = query.filter(TestResult.result_folder.is_(None))
-                return query.all()
-        except Exception as e:
-            raise e
+    def get_test_results(self, db_type: Optional[str] = None) -> list[TestResult]:
+        with self.Session() as session:
+            query = session.query(TestResult).filter(TestResult.result_folder.is_(None))
+            if db_type is not None:
+                query = query.filter(TestResult.db_type == db_type)
+            return query.all()
 
     def get_test_results_from_powertest(
         self,

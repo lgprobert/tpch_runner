@@ -64,12 +64,14 @@ class Duckdb_TPCH(base.TPCH_Runner):
         data_folder: str = str(DATA_DIR),
     ):
         """Load test data into TPC-H tables."""
-        # data_file = Path(data_folder).joinpath(f"{table}.csv")
         data_file = Path(data_folder).joinpath(
             self._get_datafile(Path(data_folder), table)
         )
-        # delimiter = ","
-        load_command = f"copy {table} from '{data_file}' delimiter '{delimiter}'"
+        load_command = (
+            "copy {} from '{}' with (delimiter '{}', auto_detect=false)".format(
+                table, data_file, delimiter
+            )
+        )
         try:
             with self._conn as conn:
                 conn.query(load_command)
@@ -81,7 +83,7 @@ class Duckdb_TPCH(base.TPCH_Runner):
     def load_data(self, data_folder: str, delimiter=","):
         with self._conn as conn:
             for table in all_tables:
-                print("table name:", table)
+                print("table:", table)
                 data_file = Path(data_folder).joinpath(
                     self._get_datafile(Path(data_folder), table)
                 )

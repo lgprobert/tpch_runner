@@ -5,7 +5,7 @@ import sys
 from pathlib import Path
 from typing import Iterable, Optional, Union
 
-from pyRDP import pyrdp
+from pyRDP import pyrdp  # type: ignore
 
 from .. import DATA_DIR, SCHEMA_BASE, timeit
 from . import base
@@ -148,6 +148,15 @@ class RDP_TPCH(base.TPCH_Runner):
             conn.query_from_file(f"{self.schema_dir}/table_schema.sql")
             conn.commit()
             print("TPC-H tables are created.")
+
+    def load_single_table(
+        self,
+        table: str,
+        line_terminator: Optional[str] = None,
+        data_folder: str = str(DATA_DIR),
+        delimiter: str = ",",
+    ):
+        raise NotImplementedError("RapidsDB does not support single table loading.")
 
     @timeit
     def load_data(

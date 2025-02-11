@@ -13,7 +13,7 @@
     "python.defaultInterpreterPath": "~/projects/venv/bin/python",
     "editor.formatOnSave": true,
     "python.analysis.extraPaths": [
-        "~/projects/pydbgen"
+        "~/projects/tpch_runner"
     ],
     "python.testing.unittestArgs": [
         "-v",
