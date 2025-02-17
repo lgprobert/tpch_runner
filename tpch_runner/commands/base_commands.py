@@ -19,7 +19,7 @@ logger = logging.getLogger(__name__)
 @click.option("-v", "verbose", is_flag=True, help="Set for verbose output")
 @click.pass_context
 def cli(ctx: click.Context, verbose: bool):
-    """Rapids Installer CLI tool"""
+    """TPC-H Benchmark Runner CLI tool"""
     ctx.ensure_object(dict)
     ctx.obj = {"verbose": verbose}
     if verbose:
@@ -57,17 +57,28 @@ def generate(scale, table) -> None:
         logger.error(f"Supported tables: {', '.join(all_tables)}.")
         sys.exit(1)
 
-    ok, _ = data_gen_batch(table, sf=int(scale))
-    if not ok:
-        logger.error("Data generation failed.\n")
+    try:
+        ok, result = data_gen_batch(table, sf=int(scale))
+        if not ok:
+            logger.error("Data generation failed.\n")
+            click.echo(f"dbgen fails, error: {result.splitlines() if result else 'n/a'}.")
+            sys.exit(1)
+        else:
+            click.echo(
+                f"succeeds, output: {result.splitlines() if result else 'done'}", err=True
+            )
+    except Exception as e:
+        logger.error(f"Error: {str(e)}")
         sys.exit(1)
 
 
+cli.add_command(dbcli)
+cli.add_command(resultcli)
+cli.add_command(powercli)
+cli.add_command(runcli)
+
+
 def main():
-    cli.add_command(dbcli)
-    cli.add_command(resultcli)
-    cli.add_command(powercli)
-    cli.add_command(runcli)
     cli()
 
 

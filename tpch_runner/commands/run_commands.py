@@ -1,3 +1,5 @@
+import sys
+
 import click
 from rich_click import RichGroup
 from tabulate import tabulate
@@ -56,6 +58,7 @@ def run_query(ctx, query: int, alias_: str, db_id: int, report: bool) -> None:
             click.echo(f"Query {query} execution failed.")
     except Exception as e:
         logger.error(f"Error: {str(e)}")
+        sys.exit(1)
 
 
 @cli.command("powertest")
@@ -78,3 +81,4 @@ def run_powertest(ctx, alias: str, db_id: int, report: bool, scale: str) -> None
         db_manager.power_test(no_report=not report)  # type: ignore
     except Exception as e:
         logger.error(f"Error: {str(e)}")
+        sys.exit(1)

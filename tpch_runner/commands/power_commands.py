@@ -1,4 +1,3 @@
-import os
 import sys
 from pathlib import Path
 from typing import Any, Optional
@@ -75,6 +74,7 @@ def ls(ctx, type_: str):
         )
     except Exception as e:
         logger.error(f"Error: {str(e)}")
+        sys.exit(1)
 
 
 @cli.command("delete")
@@ -91,7 +91,7 @@ def delete(ctx, test_id: int):
         rm.delete_powertest(test_id)
     except Exception as e:
         click.echo(f"Fails to delete Powertest result {test_id}.\nException: {e}")
-        return
+        sys.exit(1)
 
 
 @cli.command("update")
@@ -114,7 +114,7 @@ def update(ctx, test_id: int, comment: Optional[str] = None, scale: Optional[str
         )
     except Exception as e:
         click.echo(f"Fails to update Powertest result {test_id}.\nException: {e}")
-        return
+        sys.exit(1)
 
 
 @cli.command("validate")
@@ -133,7 +133,7 @@ def validate(ctx, test_id: int) -> None:
         print(f"\nPowertest {result_folder} (ID: {test_id}) result is good.")
     except Exception as e:
         click.echo(f"Validation failed for Powertest result {test_id}.\nException: {e}")
-        os._exit(1)
+        sys.exit(1)
 
 
 @cli.command("compare")
@@ -215,6 +215,7 @@ def compare(ctx, source, dest) -> None:
         )
     except Exception as e:
         logger.error(f"Error: {str(e)}")
+        sys.exit(1)
 
 
 @cli.command("show")
@@ -278,7 +279,7 @@ def show(ctx, test_id: int):
         )
     except Exception as e:
         click.echo(f"Fails to show details of Powertest {test_id}.\nException: {e}")
-        return
+        sys.exit(1)
 
 
 @cli.command("draw")
@@ -330,7 +331,7 @@ def draw(ctx, test_id: int, ref_test_id: Optional[int], chart: str) -> None:
 
     except Exception as e:
         click.echo(f"Fails to retrieve Powertest {test_id} record.\nException: {e}")
-        return
+        sys.exit(1)
 
     if compare:
         compare_chart_func(
@@ -379,6 +380,7 @@ def multi(ctx, results: tuple) -> None:
         print(f"Comparison charts are saved to {fpath_line}, {fpath_bar}.")
     except Exception as e:
         logger.error(f"Error: {str(e)}")
+        sys.exit(1)
 
 
 if __name__ == "__main__":

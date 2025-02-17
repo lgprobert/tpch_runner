@@ -1,3 +1,4 @@
+import sys
 from typing import Any
 
 import click
@@ -72,6 +73,7 @@ def ls(ctx, type_: str, single: bool):
         print(tabulate(report, tablefmt="psql", headers=headers))
     except Exception as e:
         logger.error(f"Error: {str(e)}")
+        sys.exit(1)
 
 
 @cli.command("compare")
@@ -112,6 +114,7 @@ def compare(ctx, source, dest) -> None:
         )
     except Exception as e:
         logger.error(f"Error: {str(e)}")
+        sys.exit(1)
 
 
 @cli.command("show")
@@ -168,7 +171,7 @@ def show(ctx, test_id: int):
                 input("\nPress Enter for next page...")
     except Exception as e:
         click.echo(f"Fails to show details for test ID {test_id}, exception: {e}")
-        return
+        sys.exit(1)
 
 
 @cli.command("delete")
@@ -184,7 +187,7 @@ def delete(ctx, test_id: int):
         rm.delete_test_result(test_id)
     except Exception as e:
         click.echo(f"Fails to delete test result {test_id}.\nException: {e}")
-        return
+        sys.exit(1)
 
 
 if __name__ == "__main__":

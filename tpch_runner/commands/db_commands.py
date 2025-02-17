@@ -22,7 +22,11 @@ from .utils import get_db, get_db_manager
 def cli(ctx: click.Context):
     """Manage database server connections."""
     _engine = meta.setup_database()
-    ctx.obj["rm"] = meta.DBManager(_engine)
+    if ctx.obj is None:
+        ctx.obj = {}
+    if "rm" not in ctx.obj:
+        _engine = meta.setup_database()
+        ctx.obj["rm"] = meta.DBManager(_engine)
 
 
 @cli.command("list")
@@ -52,6 +56,7 @@ def ls(ctx) -> None:
         print(tabulate(report, tablefmt="psql", headers=headers))
     except Exception as e:
         logger.error(f"Error: {str(e)}")
+        sys.exit(1)
 
 
 @cli.command("add")
@@ -77,7 +82,7 @@ def add(
     """Add a new database connection."""
     try:
         rm: meta.DBManager = ctx["rm"]
-        if not port.isdigit():
+        if not port.isdigit():  # it is a local file db like duckdb
             port = str(Path(port).expanduser())
         if cli_password:
             password = click.prompt("Enter database password", hide_input=True)
@@ -85,6 +90,7 @@ def add(
         click.echo("Database added successfully.")
     except Exception as e:
         logger.error(f"Error: {str(e)}")
+        sys.exit(1)
 
 
 @cli.command("delete")
@@ -105,6 +111,7 @@ def delete(ctx, db_id, _alias) -> None:
         click.echo("Database deleted successfully.")
     except Exception as e:
         logger.error(f"Error: {str(e)}")
+        sys.exit(1)
 
 
 @cli.command("update")
@@ -143,6 +150,7 @@ def update(
         click.echo("Database updated successfully.")
     except Exception as e:
         logger.error(f"Error: {str(e)}")
+        sys.exit(1)
 
 
 @cli.command("tables")
@@ -163,6 +171,7 @@ def tables(ctx, db_id, alias) -> None:
         print(tabulate(tables, tablefmt="psql", headers=["Table"]))
     except Exception as e:
         logger.error(f"Error: {str(e)}")
+        sys.exit(1)
 
 
 @cli.command("create")
@@ -181,6 +190,7 @@ def create(ctx, db_id, alias) -> None:
         db_manager.create_tables()
     except Exception as e:
         logger.error(f"Error: {str(e)}")
+        sys.exit(1)
 
 
 @cli.command("load")
@@ -230,6 +240,7 @@ def load(
             db_manager.after_load(reindex=reindex)
     except Exception as e:
         logger.error(f"Error during load: {str(e)}")
+        sys.exit(1)
 
 
 @cli.command("reload")
@@ -255,6 +266,7 @@ def reload(ctx, db_id, alias, optimize: bool) -> None:
         db_manager.after_load()
     except Exception as e:
         logger.error(f"Error: {str(e)}")
+        sys.exit(1)
 
 
 @cli.command("truncate")
@@ -283,6 +295,7 @@ def truncate(ctx, db_id, alias, table) -> None:
         db_manager.truncate_table(table)
     except Exception as e:
         logger.error(f"Error: {str(e)}")
+        sys.exit(1)
 
 
 @cli.command("drop")
@@ -317,6 +330,7 @@ def drop(ctx, db_id, alias, table) -> None:
             db_manager.drop_table(table)
     except Exception as e:
         logger.error(f"Error: {str(e)}")
+        sys.exit(1)
 
 
 @cli.command("count")
@@ -347,3 +361,4 @@ def count_rows(ctx, alias, table) -> None:
         print(tabulate(table_rowcounts, tablefmt="psql", headers=["Table", "RowCount"]))
     except Exception as e:
         logger.error(f"Error: {str(e)}")
+        sys.exit(1)

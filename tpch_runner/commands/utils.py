@@ -2,7 +2,6 @@ import sys
 from datetime import datetime
 from typing import Optional, Type
 
-import click
 import matplotlib.pyplot as plt
 import numpy as np
 
@@ -23,21 +22,21 @@ def get_db(
     rm: meta.DBManager, id: Optional[int] = None, alias_: Optional[str] = None
 ) -> meta.Database:
     if not id and not alias_:
-        click.echo("Either database ID or alias is required.")
+        print("Either database ID or alias is required.", file=sys.stderr)
         sys.exit(1)
 
     try:
         db: meta.Database = rm.get_databases(id=id, alias=alias_)[0]
         if not db:
-            click.echo(f"Database {id} or alias {alias_} not found.")
+            print(f"Database {id} or alias {alias_} not found.", file=sys.stderr)
             sys.exit(1)
         elif db.db_type not in meta.db_classes:
-            click.echo(f"Unsupported database type: {db.db_type}")
+            print(f"Unsupported database type: {db.db_type}", file=sys.stderr)
             sys.exit(1)
         return db
     except IndexError:
         db_name = alias_ if alias_ else str(id)
-        click.echo(f"Error fetching database: {db_name}")
+        print(f"Error fetching database: {db_name}", file=sys.stderr)
         sys.exit(1)
 
 
@@ -91,6 +90,8 @@ def get_db_manager(db: meta.Database, scale: str = "small") -> base.TPCH_Runner:
 
 def barchart(title, data, fpath):
     labels = [f"Q{i}" for i in range(1, 23)]
+    if not data or len(data) != 22:
+        raise ValueError("data can't be empty and must have 22 elements.")
 
     plt.figure(figsize=(12, 6))
     plt.bar(labels, data, color="skyblue")
@@ -112,6 +113,11 @@ def barchart2(
     fpath: str,
 ):
     labels = [f"Q{i}" for i in range(1, 23)]
+
+    if not data1 or len(data1) != 22:
+        raise ValueError("data1 can't be empty and must have 22 elements.")
+    elif not data2 or len(data2) != 22:
+        raise ValueError("data2 can't be empty and must have 22 elements.")
 
     x = np.arange(len(labels))  # the label locations
     width = 0.35  # the width of the bars
