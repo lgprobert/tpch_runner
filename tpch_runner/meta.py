@@ -17,10 +17,10 @@ from sqlalchemy import (
     Integer,
     String,
     create_engine,
+    event,
 )
 from sqlalchemy.exc import DatabaseError
-from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import joinedload, relationship, sessionmaker
+from sqlalchemy.orm import DeclarativeBase, Mapped, joinedload, relationship, sessionmaker
 
 from tpch_runner.config import app_root
 
@@ -29,7 +29,10 @@ from .tpch.databases.results import Result
 
 logger = logging.getLogger(__name__)
 
-Base = declarative_base()
+
+class Base(DeclarativeBase):
+    pass
+
 
 db_classes = {
     "mysql": ".tpch.databases.mysqldb.MySQLDB",
@@ -65,6 +68,7 @@ class TestResult(Base):  # type: ignore
     testtime = Column(DateTime, default=datetime.utcnow, nullable=False)
     db_type = Column(String, nullable=False)
     success = Column(Boolean, nullable=False)
+
     rowcount = Column(Integer, nullable=False)
     result_csv = Column(String, nullable=False)
     query_name = Column(String, nullable=False)
@@ -74,7 +78,7 @@ class TestResult(Base):  # type: ignore
     )
     database_id = Column(Integer, ForeignKey("databases.id"), nullable=False)
     database = relationship("Database", backref="results")
-    power_test = relationship("PowerTest", backref="results", passive_deletes=True)
+    power_test: Mapped["PowerTest"] = relationship(back_populates="results")
 
 
 class PowerTest(Base):  # type: ignore
@@ -91,10 +95,20 @@ class PowerTest(Base):  # type: ignore
     comment = Column(String, nullable=True)
     database_id = Column(Integer, ForeignKey("databases.id"), nullable=False)
     database = relationship("Database", backref="powertests")
+    results: Mapped[list["TestResult"]] = relationship(  # Explicit annotation
+        back_populates="power_test", passive_deletes=True
+    )
 
 
 def setup_database(db_url=f"sqlite:///{Path(app_root).expanduser()}/results.db"):
     engine = create_engine(db_url)
+
+    @event.listens_for(engine, "connect")
+    def enable_foreign_keys(dbapi_connection, connection_record):
+        cursor = dbapi_connection.cursor()
+        cursor.execute("PRAGMA foreign_keys=ON")
+        cursor.close()
+
     Base.metadata.create_all(engine)
     return engine
 
@@ -386,9 +400,6 @@ class TestResultManager:
 
                 query = query.filter(PowerTest.result_folder == result_folder)
                 shutil.rmtree(RESULT_DIR.joinpath(result_folder))
-                session.query(TestResult).filter(
-                    TestResult.result_folder == result_folder
-                ).delete()
                 deleted_count = query.delete()
                 session.commit()
 
@@ -401,20 +412,20 @@ class TestResultManager:
     def compare_powertest(self, testid: int) -> tuple[bool, str]:
         all_pass: bool = True
         with self.Session() as session:
-            power_test = session.query(PowerTest).filter_by(id=testid).first()
-            if power_test is None:
+            pt_record = session.query(PowerTest).filter_by(id=testid).first()
+            if pt_record is None:
                 raise ValueError(f"PowerTest {testid} not found.")
-            pt_folder: str = power_test.result_folder  # type: ignore
+            pt_folder: str = pt_record.result_folder  # type: ignore
 
             result = Result(
-                db_type=power_test.db_type,  # type: ignore
+                db_type=pt_record.db_type,  # type: ignore
                 result_dir=pt_folder,
-                scale=power_test.scale,  # type: ignore
+                scale=pt_record.scale,  # type: ignore
             )
             for i in range(1, 22):
                 result_file = f"{i}.csv"
                 ok = result.compare_against_answer(result_file)
-                if not ok and all_pass:
+                if not ok:
                     all_pass = False
                     logger.error(
                         f"Query {i} result is not matched against answer. Test failed."
@@ -424,7 +435,7 @@ class TestResultManager:
             return all_pass, pt_folder
 
     def get_powertest_runtime(self, test_id: int) -> tuple[str, str, float, list[float]]:
-        query_runtime: list[float] = []
+        query_runtime: list[Column[float]] = []
         with self.Session() as session:
             query = session.query(PowerTest).options(joinedload(PowerTest.results))
             result = query.filter(PowerTest.id == test_id).first()

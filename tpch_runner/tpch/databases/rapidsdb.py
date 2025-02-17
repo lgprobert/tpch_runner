@@ -23,16 +23,16 @@ class RapidsDB(base.Connection):
 
     def open(self) -> pyrdp.Connection:
         """Overload base connection open() with RapidsDB driver."""
-        if self.__connection__ is None:
-            self.__connection__ = pyrdp.connect(
+        if self._connection is None:
+            self._connection = pyrdp.connect(
                 host=self.host,
                 port=self.port,
                 user=self.user,
                 password=self.password,
                 db=self.db_name,
             )
-        self.__cursor__: pyrdp.Cursor = self.__connection__.cursor()  # type: ignore
-        return self.__connection__
+        self._cursor: pyrdp.Cursor = self._connection.cursor()  # type: ignore
+        return self._connection
 
     @staticmethod
     def _parse_impex_path(connector_ddl: str) -> Optional[Path]:
@@ -56,7 +56,7 @@ class RapidsDB(base.Connection):
         """
         replace_impex = False
 
-        if self.__cursor__.has_connector("csv"):
+        if self._cursor.has_connector("csv"):
             self.query(
                 "select CONNECTOR_DDL from connectors where connector_name = 'CSV'"
             )
@@ -78,7 +78,7 @@ class RapidsDB(base.Connection):
         if replace_impex:
             cmd = f"drop connector csv; {cmd}"
             logger.info("Recreate IMPEX connector CSV")
-        self.__cursor__.execute(cmd)
+        self._cursor.execute(cmd)
         logger.info("IMPEX connector CSV is created.")
         return True
 
@@ -88,8 +88,10 @@ class RapidsDB(base.Connection):
         """Return number of rows affected by last query or -1 if database is
         closed or executing DDL statements.
         """
-        if self.__cursor__ is None:
-            print("database has been closed")
+        if self._cursor is None:
+            self.open()
+        if self._cursor is None:
+            logger.error("database has been closed")
             return -1, None, None
 
         rowcount = 0
@@ -107,22 +109,20 @@ class RapidsDB(base.Connection):
         statements = statements.split(";")
         statements = [stmt.strip() for stmt in statements if stmt.strip()]
 
-        # breakpoint()
-
         try:
             for stmt in statements:
                 if stmt.lower().startswith("select"):
-                    self.__cursor__.execute(stmt)
-                    rowcount = self.__cursor__.rowcount
-                    rset = self.__cursor__.fetchall()
-                    columns = [desc[0] for desc in self.__cursor__.description]
+                    self._cursor.execute(stmt)
+                    rowcount = self._cursor.rowcount
+                    rset = self._cursor.fetchall()
+                    columns = [desc[0] for desc in self._cursor.description]
                 elif stmt.startswith("--"):
                     pass
                 else:
-                    rowcount = self.__cursor__.execute(stmt)
+                    rowcount = self._cursor.execute(stmt)
                     if rowcount > 0:
-                        rset = self.__cursor__.fetchall()
-                        columns = [desc[0] for desc in self.__cursor__.description]
+                        rset = self._cursor.fetchall()
+                        columns = [desc[0] for desc in self._cursor.description]
 
         except Exception as e:
             raise RuntimeError("Statement {} fails, exception: {}".format(stmt, e))

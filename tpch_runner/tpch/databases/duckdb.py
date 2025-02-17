@@ -25,15 +25,15 @@ class DuckLDB(base.Connection):
         super().__init__(None, None, None, None, None)
         self.kwargs = kwargs
         self.db_file = db_file
-        self.__connection__ = duckdb.connect(db_file)
+        self._connection = duckdb.connect(db_file)
 
     def open(self):
         """Overload base connection open() with MySQL driver."""
-        if self.__connection__ is None:
-            self.__connection__ = duckdb.connect(self.db_file)
-        if self.__cursor__ is None:
-            self.__cursor__ = self.__connection__.cursor()
-        return self.__connection__
+        if self._connection is None:
+            self._connection = duckdb.connect(self.db_file)
+        if self._cursor is None:
+            self._cursor = self._connection.cursor()
+        return self._connection
 
 
 class Duckdb_TPCH(base.TPCH_Runner):

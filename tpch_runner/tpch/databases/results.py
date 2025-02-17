@@ -71,6 +71,10 @@ class Result:
         """
         file1_path = self.result_dir.joinpath(file1)
         answer_file = self.answer_dir.joinpath(file1)
+
+        if not Path(self.answer_dir).exists():
+            raise FileNotFoundError(f"Answer folder not exists: {self.answer_dir}")
+
         if not file1_path.is_file() or not answer_file.is_file():
             raise FileNotFoundError(
                 "Result file may not exist in {}, files: {}, {}".format(
@@ -90,11 +94,13 @@ class Result:
         df_file1 = pd.read_csv(file1)
         df_file2 = pd.read_csv(file2)
         if not df_file1.columns.equals(df_file2.columns):
-            # if db1 == "mysql":
             if self.db_type == "mysql":
                 df_file2.columns = df_file1.columns
             else:
                 df_file1.columns = df_file2.columns
+
+        if len(df_file1) != len(df_file2):
+            return False
 
         numeric_columns = df_file1.select_dtypes(include=[np.number]).columns
         numeric_comparison = np.isclose(

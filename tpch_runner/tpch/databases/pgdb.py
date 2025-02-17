@@ -1,5 +1,6 @@
 """Module for PostgreSQL database TPC-H benchmark runner."""
 
+import logging
 import sys
 from pathlib import Path
 
@@ -7,6 +8,8 @@ import psycopg2
 
 from .. import DATA_DIR, SCHEMA_BASE, all_tables, timeit
 from . import base
+
+logger = logging.getLogger(__name__)
 
 
 class PGDB(base.Connection):
@@ -18,8 +21,8 @@ class PGDB(base.Connection):
 
     def open(self):
         """Overload base connection open() with PG driver."""
-        if self.__connection__ is None:
-            self.__connection__ = psycopg2.connect(
+        if self._connection is None:
+            self._connection = psycopg2.connect(
                 host=self.host,
                 port=self.port,
                 dbname=self.db_name,
@@ -27,18 +30,24 @@ class PGDB(base.Connection):
                 password=self.password,
                 **self.kwargs,
             )
-            self.__cursor__ = self.__connection__.cursor()
-        return self.__connection__
+            self._cursor = self._connection.cursor()
+        return self._connection
 
     def copyFrom(self, filepath, separator, table) -> int:
         """Return number of rows successfully copied into the target table."""
-        if self.__cursor__ is not None:
-            print(f"Load table {table} from {filepath}.")
-            with open(filepath, "r") as in_file:
-                self.__cursor__.copy_from(in_file, table=table, sep=separator)
-            return self.__cursor__.rowcount
-        print("database has been closed")
-        return -1
+        if self._cursor is None:
+            self.open()
+        if self._cursor is None:
+            logger.error("database has been closed")
+            return -1
+
+        logger.info(f"Load table {table} from {filepath}.")
+        with open(filepath, "r") as in_file:
+            self._cursor.copy_expert(
+                f"COPY {table} FROM STDIN WITH (format CSV, delimiter ',',  QUOTE '\"')",  # noqa
+                in_file,
+            )
+        return self._cursor.rowcount
 
 
 class PG_TPCH(base.TPCH_Runner):

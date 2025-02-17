@@ -22,8 +22,8 @@ class MySQLDB(base.Connection):
 
     def open(self):
         """Overload base connection open() with MySQL driver."""
-        if self.__connection__ is None:
-            self.__connection__ = pymysql.connect(
+        if self._connection is None:
+            self._connection = pymysql.connect(
                 host=self.host,
                 port=self.port,
                 database=self.db_name,
@@ -32,24 +32,26 @@ class MySQLDB(base.Connection):
                 local_infile=True,
                 **self.kwargs,
             )
-            self.__cursor__ = self.__connection__.cursor()
-        return self.__connection__
+            self._cursor = self._connection.cursor()
+        return self._connection
 
     def _index_exists(self) -> Optional[bool]:
         """Return True if there are any IDX indexes exist, return None if no
         database connection.
         """
-        if self.__cursor__ is None:
-            print("database has been closed")
+        if self._cursor is None:
+            self.open()
+        if self._cursor is None:
+            logger.error("database has been closed")
             return None
         idx_indexes = """
             SELECT distinct(INDEX_NAME)
             FROM INFORMATION_SCHEMA.STATISTICS
             WHERE TABLE_SCHEMA = 'tpch' AND INDEX_NAME LIKE 'IDX%';
         """
-        rowcount = self.__cursor__.execute(idx_indexes)
-        print(f"existing IDX indexes: {rowcount}.\n")
-        return rowcount == 0
+        rowcount = self._cursor.execute(idx_indexes)
+        logger.debug(f"existing IDX indexes: {rowcount}.\n")
+        return rowcount > 0
 
 
 class MySQL_TPCH(base.TPCH_Runner):
