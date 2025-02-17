@@ -58,13 +58,8 @@ def data_gen_batch(
         cwd=cwd,
     )
     if result.returncode == 0:
-        print(
-            f"succeeds, output: {result.stdout.splitlines() if result.stdout else 'done'}"
-        )
         return True, result.stdout
-    else:
-        print(f"dbgen fails, error: {result.stderr.splitlines()}")
-        return False, result.stderr
+    return False, result.stderr
 
 
 def generate_data(table: str, sf: int = 1, cwd: Optional[str] = None) -> Generator:
