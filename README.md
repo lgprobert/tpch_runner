@@ -129,6 +129,21 @@ Powertest Result Comparison:
 $ runner power multi 2 16 18
 ```
 
+## Result Analysis
+
+tpch_runner provides multiple ways to help users analyze the TPC-H benchmark test results, along with individual TPC-H query results. 
+
+- Manage test results including Powertest results and individual query results
+- Show details of a test result
+- Validate result against answers
+- Compare two results
+- Generate charts  (line chart or bar chart) for Powertest results
+- Generate multi-results comparison charts for Powertest results
+
+![barchart-Powertest](/home/robert/projects/tpch_runner/docs/imgs/duckdb_20250130_202150.png)
+
+![linechart-multi-comparison](/home/robert/projects/tpch_runner/docs/imgs/line-rapidsdb-pg-pg-multi.png)
+
 ## Supported Databases
 
 - MySQL
