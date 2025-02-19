@@ -19,6 +19,7 @@ from .utils import (
     linechart,
     linechart2,
     linechart_multi,
+    wrap_column,
 )
 
 
@@ -239,6 +240,7 @@ def show(ctx, test_id: int):
         result_detail["Success"] = result.success
         result_detail["Runtime (s)"] = result.runtime
         result_detail["Result Folder"] = result.result_folder
+        result_detail["Comment"] = wrap_column(result.comment)
         for k, v in result_detail.items():
             report.append((k, v))
 
@@ -259,6 +261,7 @@ def show(ctx, test_id: int):
                     query.result_csv,
                 )
             )
+
         print("\nPowertest Details:")
         print(tabulate(report, headers=["Attribute", "Value", "Value"], tablefmt="psql"))
         print("\n" + "-" * 70)

@@ -1,4 +1,7 @@
+import shutil
 import sys
+import textwrap
+import warnings
 from datetime import datetime
 from typing import Optional, Type
 
@@ -7,6 +10,17 @@ import numpy as np
 
 from .. import meta
 from ..tpch.databases import base
+
+warnings.filterwarnings(
+    "ignore", category=UserWarning, module="tpch_runner.commands.utils"
+)
+
+
+def custom_warning_handler(message, category, filename, lineno, file=None, line=None):
+    print(f"WARNING from {filename}:{lineno} - {category.__name__}: {message}")
+
+
+warnings.showwarning = custom_warning_handler
 
 
 def format_datetime(atime: datetime) -> str:
@@ -234,3 +248,12 @@ def linechart2(
 
     plt.tight_layout()
     plt.savefig(f"{fpath}.png", dpi=300)
+
+
+def wrap_column(column_text) -> str:
+    """Dynamically set column width and return column text that is adjusted to width."""
+    termina_width = shutil.get_terminal_size((80, 20)).columns
+    column_width = max(30, termina_width // 3)
+    if len(column_text) > column_width:
+        return "\n".join(textwrap.wrap(column_text, width=column_width))
+    return column_text
