@@ -8,10 +8,10 @@ import sqlglot
 
 from ...meta import TestResultManager, setup_database
 from .. import (
-    DATA_DIR,
     QUERY_ORDER,
     RESULT_DIR,
     SCHEMA_BASE,
+    SMALL_DATA_DIR,
     InternalQueryArgs,
     Result,
     all_tables,
@@ -198,7 +198,7 @@ class TPCH_Runner:
         self,
         table: str,
         line_terminator: Optional[str] = None,
-        data_folder: str = str(DATA_DIR),
+        data_folder: str = str(SMALL_DATA_DIR),
         delimiter: str = ",",
     ):
         pass
@@ -207,7 +207,7 @@ class TPCH_Runner:
     def load_data(
         self,
         table: str = "all",
-        data_folder: str = str(DATA_DIR),
+        data_folder: str = str(SMALL_DATA_DIR),
         delimiter: str = ",",
     ):
         if table != "all" and table not in all_tables:

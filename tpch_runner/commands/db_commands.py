@@ -205,7 +205,7 @@ def create(ctx, db_id, alias) -> None:
     help="Table name",
 )
 @click.option("-p", "--path", "data_folder", default=str(DATA_DIR), help="Data folder")
-@click.option("-m", "--delimiter", default=",", help="Column delimiter")
+@click.option("-d", "--delimiter", default=",", help="Column delimiter")
 @click.option(
     "--optimize/--no-optimize",
     default=True,

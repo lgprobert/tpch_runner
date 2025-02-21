@@ -7,7 +7,7 @@ from typing import Optional
 
 import pymysql
 
-from .. import DATA_DIR, SCHEMA_BASE, timeit
+from .. import SCHEMA_BASE, SMALL_DATA_DIR, timeit
 from . import base
 
 logger = logging.getLogger(__name__)
@@ -81,7 +81,7 @@ class MySQL_TPCH(base.TPCH_Runner):
         table: str,
         line_terminator: Optional[str] = None,
         delimiter: str = ",",
-        data_folder: str = str(DATA_DIR),
+        data_folder: str = str(SMALL_DATA_DIR),
     ):
         """Load test data into TPC-H tables."""
         data_file = Path(data_folder).joinpath(

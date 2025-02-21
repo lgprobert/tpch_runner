@@ -80,13 +80,13 @@ class InternalQueryArgs(NamedTuple):
     db_id: int
 
 
-DATA_DIR = Path(config.data_dir).expanduser() or Path(__file__).parent.joinpath("data")
-RESULT_DIR = Path(config.app_root).expanduser().joinpath("results")
+DATA_DIR = Path(config.data_dir).expanduser()
+RESULT_DIR = Path(config.result_dir).expanduser()
 ANSWER_DIR = Path(__file__).parent.joinpath("answer")
 SCHEMA_BASE = Path(__file__).parent.joinpath("schema")
+SMALL_DATA_DIR = Path(__file__).parent.joinpath("data")
 
-if DATA_DIR != Path("data"):
-    DATA_DIR.mkdir(exist_ok=True)
+DATA_DIR.mkdir(exist_ok=True)
 RESULT_DIR.mkdir(exist_ok=True)
 
 supported_databases = ["mysql", "pg", "rapidsdb", "duckdb"]

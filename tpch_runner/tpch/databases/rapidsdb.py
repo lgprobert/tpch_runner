@@ -7,7 +7,7 @@ from typing import Iterable, Optional, Union
 
 from pyRDP import pyrdp  # type: ignore
 
-from .. import DATA_DIR, SCHEMA_BASE, timeit
+from .. import SCHEMA_BASE, SMALL_DATA_DIR, timeit
 from . import base
 from .parser import add_schema_to_table_names
 
@@ -153,7 +153,7 @@ class RDP_TPCH(base.TPCH_Runner):
         self,
         table: str,
         line_terminator: Optional[str] = None,
-        data_folder: str = str(DATA_DIR),
+        data_folder: str = str(SMALL_DATA_DIR),
         delimiter: str = ",",
     ):
         raise NotImplementedError("RapidsDB does not support single table loading.")
@@ -162,7 +162,7 @@ class RDP_TPCH(base.TPCH_Runner):
     def load_data(
         self,
         delimiter: str = ",",
-        data_folder: str = str(DATA_DIR),
+        data_folder: str = str(SMALL_DATA_DIR),
     ):
         """Load test data into TPC-H tables."""
         dpath = Path(data_folder)

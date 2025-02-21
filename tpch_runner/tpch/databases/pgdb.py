@@ -6,7 +6,7 @@ from pathlib import Path
 
 import psycopg2
 
-from .. import DATA_DIR, SCHEMA_BASE, all_tables, timeit
+from .. import SCHEMA_BASE, SMALL_DATA_DIR, all_tables, timeit
 from . import base
 
 logger = logging.getLogger(__name__)
@@ -77,7 +77,7 @@ class PG_TPCH(base.TPCH_Runner):
     def load_single_table(
         self,
         table: str,
-        data_folder: str = str(DATA_DIR),
+        data_folder: str = str(SMALL_DATA_DIR),
         delimiter: str = ",",
     ):
         """Load test data into TPC-H tables."""
@@ -95,7 +95,7 @@ class PG_TPCH(base.TPCH_Runner):
     def load_data(
         self,
         table: str = "all",
-        data_folder: str = str(DATA_DIR),
+        data_folder: str = str(SMALL_DATA_DIR),
         delimiter: str = ",",
     ):
         if table != "all" and table not in all_tables:

@@ -6,7 +6,7 @@ from pathlib import Path
 
 import duckdb
 
-from .. import DATA_DIR, SCHEMA_BASE, all_tables, timeit
+from .. import SCHEMA_BASE, SMALL_DATA_DIR, all_tables, timeit
 from . import base
 
 SCHEMA_DIR = SCHEMA_BASE.joinpath("schema/duckdb")
@@ -61,7 +61,7 @@ class Duckdb_TPCH(base.TPCH_Runner):
         self,
         table: str,
         delimiter: str = ",",
-        data_folder: str = str(DATA_DIR),
+        data_folder: str = str(SMALL_DATA_DIR),
     ):
         """Load test data into TPC-H tables."""
         data_file = Path(data_folder).joinpath(
@@ -80,7 +80,7 @@ class Duckdb_TPCH(base.TPCH_Runner):
             print(f"Load data fails, exception: {e}", file=sys.stderr)
 
     @timeit
-    def load_data(self, data_folder: str, delimiter=","):
+    def load_data(self, data_folder: str = str(SMALL_DATA_DIR), delimiter=","):
         with self._conn as conn:
             for table in all_tables:
                 print("table:", table)

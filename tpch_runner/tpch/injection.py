@@ -1,18 +1,10 @@
 #!/usr/bin/env python
-import asyncio
-import csv
-import json
-import random
 import subprocess
 import sys
 from pathlib import Path
-from typing import AsyncGenerator, Generator, Optional
+from typing import Optional
 
 from tpch_runner import config
-
-RANDOM_LAG = config.random_lag or False
-MAX_LAG_TIME = config.max_lag_time or 1
-LAG_INTERVAL = config.lag_interval or 0
 
 ENV_VARS = {
     "DSS_PATH": "data",
@@ -60,55 +52,6 @@ def data_gen_batch(
     if result.returncode == 0:
         return True, result.stdout
     return False, result.stderr
-
-
-def generate_data(table: str, sf: int = 1, cwd: Optional[str] = None) -> Generator:
-    """
-    Runs the tool and yields raw CSV data line by line.
-    """
-    command = f"./dbgen -T {table} -s {sf} -z"
-    process = subprocess.Popen(
-        command,
-        env=ENV_VARS,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
-        text=True,
-        cwd=cwd,
-        shell=True,
-    )
-
-    # Yield each line of the raw CSV output
-    for line in iter(process.stdout.readline, ""):  # type: ignore
-        yield line.strip()
-
-    # Close the process' stdout and wait for the process to finish
-    process.stdout.close()  # type: ignore
-    process.wait()
-
-
-async def csv_to_json(
-    raw_csv_generator: Generator, fieldnames: list[str]
-) -> AsyncGenerator:
-    """Endpoint to stream region table data."""
-    csv_reader = csv.DictReader(
-        raw_csv_generator,
-        fieldnames=fieldnames,
-        delimiter="|",
-    )
-    for row in csv_reader:
-        try:
-            del row[None]
-        except Exception:
-            pass
-        if RANDOM_LAG:
-            lagtime = random.uniform(0, MAX_LAG_TIME)
-        else:
-            lagtime = LAG_INTERVAL
-        row["lag_time"] = round(lagtime, 2)
-
-        yield json.dumps(row) + "\n"
-
-        await asyncio.sleep(lagtime)
 
 
 def main(args):
