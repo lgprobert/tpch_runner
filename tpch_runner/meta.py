@@ -22,7 +22,7 @@ from sqlalchemy import (
 from sqlalchemy.exc import DatabaseError
 from sqlalchemy.orm import DeclarativeBase, Mapped, joinedload, relationship, sessionmaker
 
-from tpch_runner.config import app_root
+from tpch_runner.config import Config
 
 from .tpch import RESULT_DIR
 from .tpch.databases.results import Result
@@ -100,7 +100,9 @@ class PowerTest(Base):  # type: ignore
     )
 
 
-def setup_database(db_url=f"sqlite:///{Path(app_root).expanduser()}/results.db"):
+def setup_database(
+    db_url=f"sqlite:///{Path(Config.app_root).expanduser()}/results.db",
+):
     engine = create_engine(db_url)
 
     @event.listens_for(engine, "connect")

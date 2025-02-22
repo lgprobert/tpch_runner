@@ -6,7 +6,7 @@ import click
 from rich_click import RichGroup
 from tabulate import tabulate
 
-from tpch_runner.config import app_root
+from tpch_runner.config import Config
 
 from .. import logger, meta
 from ..tpch import supported_databases
@@ -319,7 +319,7 @@ def draw(ctx, test_id: int, ref_test_id: Optional[int], chart: str) -> None:
         db, test_name, total_runtime, query_runtimes = rm.get_powertest_runtime(test_id)
         # print("runtime:", query_runtimes)
 
-        chart_file_path = Path(app_root).joinpath(f"{test_name}.png").expanduser()
+        chart_file_path = Path(Config.app_root).joinpath(f"{test_name}.png").expanduser()
         if ref_test_id:
             compare = True
             ref_db, ref_test_name, _, ref_query_runtimes = rm.get_powertest_runtime(
@@ -327,7 +327,7 @@ def draw(ctx, test_id: int, ref_test_id: Optional[int], chart: str) -> None:
             )
             print(f"Comparing {test_name} with {ref_test_name}")
             chart_file_path = (
-                Path(app_root)
+                Path(Config.app_root)
                 .joinpath(f"{test_name}-{ref_test_name}_{chart}chart.png")
                 .expanduser()
             )
@@ -371,10 +371,10 @@ def multi(ctx, results: tuple) -> None:
             fpath = db if not fpath else fpath + "-" + db
 
         fpath_bar = str(
-            Path(app_root).joinpath("bar-" + fpath + "-multi.png").expanduser()
+            Path(Config.app_root).joinpath("bar-" + fpath + "-multi.png").expanduser()
         )
         fpath_line = str(
-            Path(app_root).joinpath("line-" + fpath + "-multi.png").expanduser()
+            Path(Config.app_root).joinpath("line-" + fpath + "-multi.png").expanduser()
         )
 
         print(f"Comparing test results of {_test_names}")

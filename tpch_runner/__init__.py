@@ -4,7 +4,8 @@ from pathlib import Path
 
 from . import commands, config, tpch
 from ._version import __version__
-from .config import app_root
+
+app_root = config.Config.app_root
 
 
 def setup_logger(level=logging.WARNING):

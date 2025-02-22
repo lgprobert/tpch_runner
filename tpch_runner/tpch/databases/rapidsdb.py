@@ -5,7 +5,7 @@ import sys
 from pathlib import Path
 from typing import Iterable, Optional, Union
 
-from pyRDP import pyrdp  # type: ignore
+from pyrdpdb import pyrdp  # type: ignore
 
 from .. import SCHEMA_BASE, SMALL_DATA_DIR, timeit
 from . import base

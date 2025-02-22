@@ -4,7 +4,7 @@ import sys
 from pathlib import Path
 from typing import Optional
 
-from tpch_runner import config
+from tpch_runner.config import Config
 
 ENV_VARS = {
     "DSS_PATH": "data",
@@ -30,8 +30,7 @@ def data_gen_batch(
 ) -> tuple[bool, str]:
     if not env_vars:
         env_vars = ENV_VARS
-    if "data_dir" in dir(config):
-        data_dir = Path(config.data_dir)
+        data_dir = Path(Config.data_dir)
     else:
         data_dir = Path(env_vars["DSS_PATH"])
     data_dir = data_dir.expanduser().joinpath("sf" + str(sf))

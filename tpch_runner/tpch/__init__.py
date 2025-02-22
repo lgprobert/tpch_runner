@@ -8,7 +8,7 @@ from typing import Any, NamedTuple, Optional
 
 import pandas as pd
 
-from .. import config
+from ..config import Config
 
 Result = namedtuple(
     "Result",
@@ -80,8 +80,8 @@ class InternalQueryArgs(NamedTuple):
     db_id: int
 
 
-DATA_DIR = Path(config.data_dir).expanduser()
-RESULT_DIR = Path(config.result_dir).expanduser()
+DATA_DIR = Path(Config.data_dir).expanduser()
+RESULT_DIR = Path(Config.result_dir).expanduser()
 ANSWER_DIR = Path(__file__).parent.joinpath("answer")
 SCHEMA_BASE = Path(__file__).parent.joinpath("schema")
 SMALL_DATA_DIR = Path(__file__).parent.joinpath("data")
