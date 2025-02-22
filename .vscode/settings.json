@@ -1,10 +1,30 @@
 {
     "[python]": {
         "editor.defaultFormatter": "ms-python.black-formatter",
-        "editor.formatOnSave": true
+        "editor.formatOnSave": true,
+        "editor.codeActionsOnSave": {
+            "source.organizeImports": "explicit"
+        },
     },
     "black-formatter.args": [
         "--line-length",
-        "90"
+        "90",
+    ],
+    "python.defaultInterpreterPath": "~/projects/venv/bin/python",
+    "editor.formatOnSave": true,
+    "python.analysis.extraPaths": [
+        "~/projects/tpch_runner"
+    ],
+    "python.testing.unittestArgs": [
+        "-v",
+        "-s",
+        "./tests",
+        "-p",
+        "test_*.py"
+    ],
+    "python.testing.pytestEnabled": true,
+    "python.testing.unittestEnabled": false,
+    "python.testing.pytestArgs": [
+        "tests"
     ]
 }

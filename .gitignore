@@ -106,7 +106,7 @@ venv/
 ENV/
 env.bak/
 venv.bak/
-tpch
+.vscode
 
 # Spyder project settings
 .spyderproject
@@ -126,3 +126,16 @@ dmypy.json
 # Pyre type checker
 .pyre/
 *.new
+
+# exclude tpch/tool/*
+**/tpch/tool/*
+!**/tpch/tool/.gitkeep
+
+queries/
+!tpch/queries/.gitkeep
+!**/schema/*/queries
+tpch/data/*
+!data/*.csv
+
+results.db
+tpch.duckdb

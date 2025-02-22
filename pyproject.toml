@@ -1,0 +1,91 @@
+[project]
+name = "tpch_runner"
+dynamic = ["version"]
+authors = [{ name = "Robert Li", email = "lgprobert@gmail.com" }]
+description = "A tool for running TPC-H benchmarks and analyzing results."
+readme = "README.md"
+license = { text = "MIT" }
+urls = { Homepage = "https://github.com/lgprobert/tpch_runner" }
+
+keywords = ["TPC-H", "benchmark", "database", "performance"]
+requires-python = ">=3.7"
+
+classifiers = [
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3.7",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: Implementation :: CPython",
+    "Programming Language :: Python :: Implementation :: PyPy",
+    "Topic :: Database",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+]
+
+dependencies = [
+    "click>=8.1.0",
+    "rich-click",
+    "duckdb",
+    "matplotlib>=3.10.0",
+    "psycopg2>=2.9",
+    "PyMySQL>=1.1",
+    "pyrdpdb>=4.1.0",
+    "pandas",
+    "sqlalchemy>=2.0",
+    "sqlglot>=26.3.8",
+    "sqlparse>=0.5.0",
+    "tabulate",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest",
+    "pytest-stubs",
+    "pytest-mock",
+    "pandas-stubs",
+    "types-PyMySQL",
+    "types-psycopg2",
+]
+
+[project.scripts]
+runner = "tpch_runner.commands.base_commands:main"
+
+[tool.setuptools.dynamic]
+version = { attr = "tpch_runner._version.__version__" }
+
+
+[build-system]
+requires = ["setuptools", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+license-files = ["LICENSE"]
+
+[tool.setuptools.packages.find]
+namespaces = false
+include = ["tpch_runner*"]
+exclude = ["tests*", "tpch_runner.tests*"]
+
+[tool.mypy]
+disable_error_code = ["import-untyped"]
+
+[[tool.mypy.overrides]]
+module = ["tpch_runner.*"]
+ignore_missing_imports = true
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
+
+[tool.black]
+line-length = 90
+target-version = ['py37', 'py38', 'py39', 'py310']
+
+[tool.isort]
+profile = "black"
+multi_line_output = 3
+include_trailing_comma = true
+force_grid_wrap = 0
+use_parentheses = true
+ensure_newline_before_comments = true
+line_length = 90
