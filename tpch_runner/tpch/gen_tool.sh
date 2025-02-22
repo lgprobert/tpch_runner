@@ -1,0 +1,109 @@
+#!/bin/bash
+# shellcheck disable=SC2034
+
+export DSS_PATH='data'
+export DSS_CONFIG='tool'
+export DSS_DIST='dists.dss'
+export DSS_QUERY='templates'
+action=dbgen
+
+all_tables=("region" "nation" "customer" "part" "supplier" "partsupp" "orders" "lineitem")
+
+usage() {
+    echo "Usage: $0 [-s scale_factor] [-t table] [-q query_number] [dbgen|qgen]"
+    echo "  -s scale_factor: Scale factor for data generation (default: 1)"
+}
+
+err_exit() {
+    echo "Error: $1" >&2
+    exit 1
+}
+
+query_generator() {
+
+    if (( QUERY == -1 )); then
+        echo -e "Generating queries for scale factor $SCALE_FACTOR"
+        for i in {1..22}; do
+            tool/qgen -d -s "$SCALE_FACTOR" "$i" > queries/q"$i".sql
+        done
+    else
+        echo -e "Generating query $QUERY for scale factor $SCALE_FACTOR"
+        tool/qgen -d -s "$SCALE_FACTOR" "$QUERY" > queries/q"$QUERY".sql
+    fi
+}
+
+data_generator() {
+    echo -e "Generating data for table $TABLE of scale factor $SCALE_FACTOR"
+    pushd tool
+    if [ "$TABLE" = "all" ]; then
+        tool/dbgen -f -s "$SCALE_FACTOR"
+    else
+        tool/dbgen -f -s "$SCALE_FACTOR" -T "$TABLE"
+    fi
+    popd
+}
+
+if [[ -n "$1" && ("$1" == "dbgen" || "$1" == "qgen") ]]; then
+    action="$1"
+    shift
+else
+    err_exit "Error: The first argument must be 'dbgen' or 'qgen'."
+fi
+
+while getopts "s:t:q:h" option
+do
+    case $option in
+        s)
+            if [[ "$OPTARG" =~ ^-?[0-9]+$ ]]; then
+                SCALE_FACTOR="$OPTARG"
+            else
+                err_exit "-s requires a number"
+            fi
+            ;;
+        t)
+            if printf "%s\n" "${all_tables[@]}" | grep "$OPTARG" > /dev/null; then
+                TABLE=$OPTARG
+            else
+                err_exit "Invalid table: $OPTARG"
+            fi
+            ;;
+        q)
+            if [[ "$OPTARG" =~ ^-?[0-9]+$ ]]; then
+                if (( OPTARG >= 1 && OPTARG <= 22 )); then
+                    QUERY=$OPTARG
+                else
+                    err_exit "Invalid query number: $OPTARG"
+                fi
+            else
+                err_exit "-q requires a number between 1 and 22"
+            fi
+            ;;
+        h)
+            usage
+            exit 0
+            ;;
+        *)
+            usage
+            echo
+            err_exit "Invalid option: -$OPTARG"
+            ;;
+    esac
+done
+
+if [[ -z "$SCALE_FACTOR" ]]; then
+    SCALE_FACTOR=1
+fi
+
+if [[ -z "$TABLE" ]]; then
+    TABLE="all"
+fi
+
+if [[ -z "$QUERY" ]]; then
+    QUERY=-1
+fi
+
+if [ "$action" == "dbgen" ]; then
+    data_generator
+elif [ "$action" == "qgen" ]; then
+    query_generator
+fi

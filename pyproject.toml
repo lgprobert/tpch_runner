@@ -1,0 +1,60 @@
+[project]
+name = "tpch_runner"
+authors = [{ name = "Robert Li", email = "laigp@hotmail.com" }]
+description = "README.md"
+license = { text = "MIT License" }
+
+dependencies = [
+    "click>=8.1.0",
+    "rich-click",
+    "duckdb",
+    "matplotlib>=3.10.0",
+    "psycopg2>=2.9",
+    "PyMySQL>=1.1",
+    "pyRDP==4.1.0",
+    "pandas",
+    "sqlalchemy>=2.0",
+    "sqlglot>=26.3.8",
+    "sqlparse>=0.5.0",
+    "tabulate",
+]
+
+dynamic = ["version"]
+
+requires-python = ">=3.7"
+
+classifiers = [
+    "Development Status :: 1",
+    "Programming Language :: Python :: 3.7",
+    "Programming Language :: Python :: Implementation :: PyPy",
+    "Intended Audience :: Developers",
+    "Topic :: Database",
+]
+
+
+[project.scripts]
+runner = "tpch_runner.commands.base_commands:main"
+
+[build-system]
+requires = ["setuptools>=59", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+namespaces = false
+include = ["tpch_runner*"]
+exclude = ["tests*", "tpch_runner.tests*"]
+
+[tool.setuptools.dynamic]
+version = { attr = "tpch_runner._version.__version__" }
+
+
+[tool.mypy]
+disable_error_code = ["import-untyped"]
+
+[[tool.mypy.overrides]]
+module = ["tpch_runner.*"]
+ignore_missing_imports = true
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
