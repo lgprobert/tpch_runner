@@ -7,7 +7,7 @@ sqlalchemy>=2.0
 pandas-stubs
 ipython
 duckdb
-pyRDP>=4.1.0
+pyrdpdb>=4.1.0
 pytest
 pytest-stubs
 pytest-mock

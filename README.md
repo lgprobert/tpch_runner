@@ -22,9 +22,13 @@ tpch\_runner is a database-agnostic TPC-H benchmark tool designed for running an
 Getting started with **tpch_runner** is quick and simple. Just clone the repository and install it in editable mode:
 
 ```sh
-$ git clone https://github.com/your-repo/tpch_runner.git
-$ cd tpch_runner
-$ pip install -e .
+# install by clone from github repository
+git clone https://github.com/your-repo/tpch_runner.git
+cd tpch_runner
+pip install -e .
+
+# install from Pypi package
+pip install tpch_runner
 ```
 
 ### Important Notes
@@ -62,23 +66,33 @@ $ runner db add -H localhost -t mysql -u root -W -d tpch -a mysql2 -p 3306
 Enter database password:
 [INFO] Added database connection.
 ```
+
 - **Create Tables**:
+
 ```sh
-$ runner db create -a my1
+runner db create -a my1
 ```
+
 - **Load Data**:
+
 ```sh
-$ runner db load -a duck -m ','
+runner db load -a duck -m ','
 ```
+
 - **Run a Single Query:**
+
 ```sh
-$ runner run query -a duck 15 --no-report
+runner run query -a duck 15 --no-report
 ```
+
 - **Run a TPC-H Powertest**
+
 ```sh
-$ runner run powertest -a duck
+runner run powertest -a duck
 ```
+
 - **Result Analysis:**
+
 ```sh
 $ runner power list
 +------+----------+---------------------+-----------+---------------+---------+
@@ -90,17 +104,23 @@ $ runner power list
 |   20 | pg       | 2025-01-30 23:53:07 | True      |       14.8139 | 1       |
 +------+----------+---------------------+-----------+---------------+---------+
 ```
+
 - **Validate Test Results:**
+
 ```sh
-$ runner power validate 18
+runner power validate 18
 ```
+
 - **Compare two test results:**
+
 ```sh
-$  runner power compare -s 11 -d 20
+runner power compare -s 11 -d 20
 ```
+
 - **Generate Comparison Charts:**
+
 ```sh
-$ runner power multi 2 16 18
+runner power multi 2 16 18
 ```
 
 ## Result Analysis
@@ -114,9 +134,9 @@ $ runner power multi 2 16 18
 - Generate line and bar charts for visualizing Powertest performance.
 - Create multi-result comparison charts.
 
-![barchart-Powertest](/home/robert/projects/tpch_runner/docs/imgs/duckdb_20250130_202150.png)
+![barchart-Powertest](./docs/imgs/duckdb_20250130_202150.png)
 
-![linechart-multi-comparison](/home/robert/projects/tpch_runner/docs/imgs/line-rapidsdb-pg-pg-multi.png)
+![linechart-multi-comparison](./docs/imgs/line-rapidsdb-pg-pg-multi.png)
 
 ## Supported Databases
 

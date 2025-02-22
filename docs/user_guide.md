@@ -181,7 +181,7 @@ TPC-H Powertest is run per TPC-H specification in below order:
 
 ### Saving test results
 
-tpch_runner can optionally store query execution results along with other critical test information to support test result analysis. 
+tpch_runner can optionally store query execution results along with other critical test information to support test result analysis.
 
 Both sub-commands (`query` and `powertest`) of `runner run` provides command line options: `--report` and `--no-report` to tell if the test result should be saved.
 
@@ -190,7 +190,7 @@ When a result is to be saved, below information will be included:
 - database type
 - test run succeed or not
 - result set rowcount
-- result file name and result folder for Powertest 
+- result file name and result folder for Powertest
 - query name
 - run time
 
@@ -198,7 +198,7 @@ When a result is to be saved, below information will be included:
 
 ## Result Analysis
 
-tpch_runner provides multiple ways to help users analyze the TPC-H benchmark test results, along with individual TPC-H query results. 
+tpch_runner provides multiple ways to help users analyze the TPC-H benchmark test results, along with individual TPC-H query results.
 
 - Manage test results including Powertest results and individual query results
 - Show details of a test result
@@ -209,7 +209,7 @@ tpch_runner provides multiple ways to help users analyze the TPC-H benchmark tes
 
 ### Basic Result Analysis
 
-The biggest thing most people concern most when doing TPC-H benchmark tests is **query execution time** and **total execution time**. With these data for the database we test and results of the other databases performed, we would know how fast the current database could be, or host fast of one database configuration compares to other configurations of same database. 
+The biggest thing most people concern most when doing TPC-H benchmark tests is **query execution time** and **total execution time**. With these data for the database we test and results of the other databases performed, we would know how fast the current database could be, or host fast of one database configuration compares to other configurations of same database.
 
 But besides these execution time, there are other equally important data of TPC-H test we should care, which are whether the TPC-H test passes all queries and produces correct answers.
 
@@ -346,7 +346,7 @@ R               F                    3.77198e+07       5.6568e+10        5.37413
 
 ### Powertest Result Analysis
 
-Powertest is a term per TPC-H specification. It can be simply understood as a single run of all 22 queries TPC-H queries in specific sequence. 
+Powertest is a term per TPC-H specification. It can be simply understood as a single run of all 22 queries TPC-H queries in specific sequence.
 
 Powertest test result behaves like a placeholder to hold all 22 individual query results from the same test run. Individual query results within same Powertest run should be managed as a single entity. So attempt to delete a Powertest query result will fail with below error:
 
@@ -398,9 +398,9 @@ Showing Powertest result has two parts:
 - The overall information of the test:
   - Database type
   - Data scale
-  - Success or not 
+  - Success or not
   - total run time
-  - Result folder 
+  - Result folder
 - Overall result of each query
 
 ```sh
@@ -492,9 +492,9 @@ Powertest Individual Query Result Comparison:
 
 Validation is important to make sure a TPC-H Powertest result is correct. tpch_runner develops methods to validate query result against correct answer. But the answer itself is dependent to the size of data scale because same query running in different test data size will have different results.
 
-Since tpch_runner allows users running TPC-H benchmark test under any data scale, to the answer files for each specific data size will be user's responsibility to prepare. tpch_runner itself bundles the answer files for the bundled **small** data set. It is useful to use small dataset to quickly run through various features of tpch_runner, prepare database and ensure target database is ready for TPC-H benchmark test. 
+Since tpch_runner allows users running TPC-H benchmark test under any data scale, to the answer files for each specific data size will be user's responsibility to prepare. tpch_runner itself bundles the answer files for the bundled **small** data set. It is useful to use small dataset to quickly run through various features of tpch_runner, prepare database and ensure target database is ready for TPC-H benchmark test.
 
-To prepare answer files for a specific data scale, normally you need to run a few times Powertest of same data scale for one database or different databases, then compare test result from one to one. If the test result after cross comparison among 3 or 4 tests remain identical, there is high chance the test result is correct. 
+To prepare answer files for a specific data scale, normally you need to run a few times Powertest of same data scale for one database or different databases, then compare test result from one to one. If the test result after cross comparison among 3 or 4 tests remain identical, there is high chance the test result is correct.
 
 The next step is make a test result as **answer**. This is a manual process and follow below procedure for this:
 
@@ -510,9 +510,9 @@ $ mkdir tpch_runner/tpch/answer/10
 cp <result_dir>/*.csv tpch_runner/tpch/answer/10/
 ```
 
-> Note: 
+> Note:
 >
-> - `validate` sub-command conducts row by row, column by column comparison from result to answer. To use this, one set of answers must be prepared at first. 
+> - `validate` sub-command conducts row by row, column by column comparison from result to answer. To use this, one set of answers must be prepared at first.
 > - Answers should be database neutral which means the answers should be able to validate results from different databases under same data scale.
 
 #### Generate charts from Powertest results
@@ -539,6 +539,6 @@ Comparing test results of  rapidsdb_20250127_194422 pg_20250127_215247 pg_202501
 Comparison charts are saved to /home/robert/data/tpch_runner/line-rapidsdb-pg-pg-multi.png, /home/robert/data/tpch_runner/bar-rapidsdb-pg-pg-multi.png.
 ```
 
-![line_chart-multi](/home/robert/projects/tpch_runner/docs/imgs/line-rapidsdb-pg-pg-multi.png)
+![line_chart-multi](./imgs/line-rapidsdb-pg-pg-multi.png)
 
-![barchart-multi](/home/robert/projects/tpch_runner/docs/imgs/bar-rapidsdb-pg-pg-multi.png.png)
+![barchart-multi](./imgs/bar-rapidsdb-pg-pg-multi.png.png)

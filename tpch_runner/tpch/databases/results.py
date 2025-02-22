@@ -4,7 +4,7 @@ from typing import Optional
 import numpy as np
 import pandas as pd
 
-from tpch_runner.config import precision
+from tpch_runner.config import Config
 
 from .. import ANSWER_DIR, RESULT_DIR
 
@@ -104,7 +104,7 @@ class Result:
 
         numeric_columns = df_file1.select_dtypes(include=[np.number]).columns
         numeric_comparison = np.isclose(
-            df_file1[numeric_columns], df_file2[numeric_columns], atol=precision
+            df_file1[numeric_columns], df_file2[numeric_columns], atol=Config.precision
         )
 
         non_numeric_columns = df_file1.select_dtypes(exclude=[np.number]).columns
