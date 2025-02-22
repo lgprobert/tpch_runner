@@ -114,9 +114,9 @@ $ runner power multi 2 16 18
 - Generate line and bar charts for visualizing Powertest performance.
 - Create multi-result comparison charts.
 
-![barchart-Powertest](/home/robert/projects/tpch_runner/docs/imgs/duckdb_20250130_202150.png)
+![barchart-Powertest](./docs/imgs/duckdb_20250130_202150.png)
 
-![linechart-multi-comparison](/home/robert/projects/tpch_runner/docs/imgs/line-rapidsdb-pg-pg-multi.png)
+![linechart-multi-comparison](./docs/imgs/line-rapidsdb-pg-pg-multi.png)
 
 ## Supported Databases
 

@@ -539,6 +539,6 @@ Comparing test results of  rapidsdb_20250127_194422 pg_20250127_215247 pg_202501
 Comparison charts are saved to /home/robert/data/tpch_runner/line-rapidsdb-pg-pg-multi.png, /home/robert/data/tpch_runner/bar-rapidsdb-pg-pg-multi.png.
 ```
 
-![line_chart-multi](/home/robert/projects/tpch_runner/docs/imgs/line-rapidsdb-pg-pg-multi.png)
+![line_chart-multi](./imgs/line-rapidsdb-pg-pg-multi.png)
 
-![barchart-multi](/home/robert/projects/tpch_runner/docs/imgs/bar-rapidsdb-pg-pg-multi.png.png)
+![barchart-multi](./imgs/bar-rapidsdb-pg-pg-multi.png.png)
